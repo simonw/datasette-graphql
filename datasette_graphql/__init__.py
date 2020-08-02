@@ -19,7 +19,6 @@ async def post_body(request):
 
 
 async def view_graphql(request, datasette):
-    print("here we go")
     body = await post_body(request)
     if not body:
         return Response.text("Hello from GraphQL")
@@ -33,12 +32,10 @@ async def view_graphql(request, datasette):
         schema, query, executor=AsyncioExecutor(), return_promise=True
     )
     if result.errors:
-        print(result.errors)
         return Response.json(
             json.loads(json.dumps(result.errors, default=repr)), status=500
         )
     else:
-        print(result.data)
         return Response.json(result.data)
 
 
