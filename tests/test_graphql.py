@@ -40,7 +40,7 @@ async def test_graphql_view(ds):
         assert response.status_code == 200
         assert response.json() == {
             "data": {
-                "dogs": [{"name": "Cleo", "age": "5"}, {"name": "Pancakes", "age": "4"}]
+                "dogs": [{"name": "Cleo", "age": 5}, {"name": "Pancakes", "age": 4}]
             }
         }
 
