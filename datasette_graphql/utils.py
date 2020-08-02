@@ -14,19 +14,40 @@ async def schema_for_database(datasette, database=None, tables=None):
 
     # For each table, expose a graphene.List
     to_add = []
+    table_classes = {}
     for table in await db.table_names():
-        # Create a class for this table
-        def get_columns(conn):
-            return sqlite_utils.Database(conn)[table].columns_dict
+        # Perform all introspection in a single call to the execute_fn thread
 
-        columns = await db.execute_fn(get_columns)
-        klass = type(
-            table,
-            (graphene.ObjectType,),
-            {colname: types[coltype] for colname, coltype in columns.items()},
+        def introspect_table(conn):
+            db = sqlite_utils.Database(conn)
+            columns = db[table].columns_dict
+            foreign_keys = db[table].foreign_keys
+            return columns, foreign_keys
+
+        columns, foreign_keys = await db.execute_fn(introspect_table)
+        fks_by_column = {fk.column: fk for fk in foreign_keys}
+
+        # Create a class for this table
+        table_dict = {}
+        for colname, coltype in columns.items():
+            if colname in fks_by_column:
+                fk = fks_by_column[colname]
+                table_dict[colname] = graphene.Field(
+                    make_table_getter(table_classes, fk.other_table)
+                )
+                table_dict["resolve_{}".format(colname)] = make_fk_resolver(
+                    db, table, table_classes, fk
+                )
+
+            else:
+                table_dict[colname] = types[coltype]
+
+        table_class = type(table, (graphene.ObjectType,), table_dict)
+        table_classes[table] = table_class
+        to_add.append((table, graphene.List(of_type=table_class)))
+        to_add.append(
+            ("resolve_{}".format(table), make_all_rows_resolver(db, table, table_class))
         )
-        to_add.append((table, graphene.List(of_type=klass)))
-        to_add.append(("resolve_{}".format(table), make_resolver(db, table, klass)))
 
     Query = type(
         "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
@@ -34,9 +55,31 @@ async def schema_for_database(datasette, database=None, tables=None):
     return graphene.Schema(query=Query, auto_camelcase=False)
 
 
-def make_resolver(db, table, klass):
+def make_all_rows_resolver(db, table, klass):
     async def resolve(parent, info):
         results = await db.execute("select * from [{}]".format(table))
         return [klass(**dict(row)) for row in results.rows]
 
     return resolve
+
+
+def make_fk_resolver(db, table, table_classes, fk):
+    async def resolve_foreign_key(parent, info):
+        # retrieve the correct column from parent
+        pk = getattr(parent, fk.column)
+        sql = "select * from [{}] where [{}] = :v".format(
+            fk.other_table, fk.other_column
+        )
+        params = {"v": pk}
+        results = await db.execute(sql, params)
+        fk_class = table_classes[fk.other_table]
+        return [fk_class(**dict(row)) for row in results.rows][0]
+
+    return resolve_foreign_key
+
+
+def make_table_getter(table_classes, table):
+    def getter():
+        return table_classes[table]
+
+    return getter

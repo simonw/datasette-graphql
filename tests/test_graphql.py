@@ -24,25 +24,67 @@ async def test_graphiql():
 
 
 @pytest.mark.asyncio
-async def test_graphql_view(ds):
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post(
-            "http://localhost/graphql",
-            json={
-                "query": """
-        { dogs {
-            name
-            age
-        } }
-        """
+@pytest.mark.parametrize(
+    "query,expected",
+    [
+        (
+            """{
+                users {
+                    name
+                    points
+                    score
+                }
+            }""",
+            {
+                "users": [
+                    {"name": "cleopaws", "points": 5, "score": 51.5},
+                    {"name": "simonw", "points": 3, "score": 35.2},
+                ]
             },
-        )
+        ),
+        # Nested query
+        (
+            """{
+                issues {
+                    title
+                    user {
+                        id
+                        name
+                    }
+                    repo {
+                        name
+                        license {
+                            key
+                            name
+                        }
+                        owner {
+                            id
+                            name
+                        }
+                    }
+                }
+            }""",
+            {
+                "issues": [
+                    {
+                        "title": "Not enough dog stuff",
+                        "user": {"id": 1, "name": "cleopaws"},
+                        "repo": {
+                            "name": "datasette",
+                            "license": {"key": "apache2", "name": "Apache 2"},
+                            "owner": {"id": 2, "name": "simonw"},
+                        },
+                    }
+                ]
+            },
+        ),
+    ],
+)
+async def test_graphql_query(ds, query, expected):
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query},)
         assert response.status_code == 200
-        assert response.json() == {
-            "data": {
-                "dogs": [{"name": "Cleo", "age": 5}, {"name": "Pancakes", "age": 4}]
-            }
-        }
+        assert response.json() == {"data": expected}
 
 
 @pytest.mark.asyncio
@@ -51,12 +93,12 @@ async def test_graphql_error(ds):
         response = await client.post(
             "http://localhost/graphql",
             json={
-                "query": """
-        { dogs {
-            nam2
-            age
-        } }
-        """
+                "query": """{
+                    users {
+                        nam2
+                        score
+                    }
+                }"""
             },
         )
         assert response.status_code == 500
@@ -64,8 +106,8 @@ async def test_graphql_error(ds):
             "data": None,
             "errors": [
                 {
-                    "message": 'Cannot query field "nam2" on type "dogs". Did you mean "name"?',
-                    "locations": [{"line": 3, "column": 13}],
+                    "message": 'Cannot query field "nam2" on type "users". Did you mean "name"?',
+                    "locations": [{"line": 3, "column": 25}],
                 }
             ],
         }

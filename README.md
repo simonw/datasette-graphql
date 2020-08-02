@@ -21,9 +21,24 @@ Install this plugin in the same environment as Datasette.
 This sets up `/graphql` as a GraphQL endpoint for the first attached database. Individual tables can be queried like this:
 ```grophql
 {
-  name_of_table {
-    first_column
-    second_column
+  repos {
+    id
+    full_name
+    description
+  }
+}
+```
+
+If a column is a foreign key to another table, you can request columns of that table using a nested query like this:
+```graphql
+{
+  repos {
+    id
+    full_name
+    owner {
+      id
+      login
+    }
   }
 }
 ```
@@ -32,7 +47,6 @@ Still to come:
 
 - Pagination
 - Filtering (e.g. rows where age > X)
-- Foreign key expansion
 - Much, much more
 
 ## Development
