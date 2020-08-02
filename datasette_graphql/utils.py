@@ -1,3 +1,4 @@
+from datasette.filters import Filters
 import graphene
 import sqlite_utils
 
@@ -44,7 +45,16 @@ async def schema_for_database(datasette, database=None, tables=None):
 
         table_class = type(table, (graphene.ObjectType,), table_dict)
         table_classes[table] = table_class
-        to_add.append((table, graphene.List(of_type=table_class)))
+        to_add.append(
+            (
+                table,
+                graphene.List(
+                    of_type=table_class,
+                    args={"filters": graphene.List(graphene.String)},
+                    required=False,
+                ),
+            )
+        )
         to_add.append(
             ("resolve_{}".format(table), make_all_rows_resolver(db, table, table_class))
         )
@@ -56,8 +66,17 @@ async def schema_for_database(datasette, database=None, tables=None):
 
 
 def make_all_rows_resolver(db, table, klass):
-    async def resolve(parent, info):
-        results = await db.execute("select * from [{}]".format(table))
+    async def resolve(parent, info, filters=None):
+        where_clause = ""
+        params = {}
+        if filters:
+            pairs = [f.split("=", 1) for f in filters]
+            filter_obj = Filters(pairs)
+            where_clause_bits, params = filter_obj.build_where_clauses(table)
+            where_clause = " where " + " and ".join(where_clause_bits)
+        results = await db.execute(
+            "select * from [{}]{}".format(table, where_clause), params
+        )
         return [klass(**dict(row)) for row in results.rows]
 
     return resolve

@@ -78,6 +78,16 @@ async def test_graphiql():
                 ]
             },
         ),
+        # Filters
+        (
+            """{
+                users(filters:["score__gt=50"]) {
+                    name
+                    score
+                }
+            }""",
+            {"users": [{"name": "cleopaws", "score": 51.5}]},
+        ),
     ],
 )
 async def test_graphql_query(ds, query, expected):
