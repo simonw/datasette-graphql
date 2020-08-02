@@ -37,6 +37,35 @@ async def test_graphql_view(ds):
         """
             },
         )
+        assert response.status_code == 200
         assert response.json() == {
-            "dogs": [{"name": "Cleo", "age": "5"}, {"name": "Pancakes", "age": "4"}]
+            "data": {
+                "dogs": [{"name": "Cleo", "age": "5"}, {"name": "Pancakes", "age": "4"}]
+            }
+        }
+
+
+@pytest.mark.asyncio
+async def test_graphql_error(ds):
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post(
+            "http://localhost/graphql",
+            json={
+                "query": """
+        { dogs {
+            nam2
+            age
+        } }
+        """
+            },
+        )
+        assert response.status_code == 500
+        assert response.json() == {
+            "data": None,
+            "errors": [
+                {
+                    "message": 'Cannot query field "nam2" on type "dogs". Did you mean "name"?',
+                    "locations": [{"line": 3, "column": 13}],
+                }
+            ],
         }

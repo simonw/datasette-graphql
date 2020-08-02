@@ -1,6 +1,7 @@
 from datasette import hookimpl
 from datasette.utils.asgi import Response
 from graphql.execution.executors.asyncio import AsyncioExecutor
+from graphql.error import format_error
 from graphql import graphql
 import json
 from .utils import schema_for_database
@@ -33,12 +34,11 @@ async def view_graphql(request, datasette):
     result = await graphql(
         schema, query, executor=AsyncioExecutor(), return_promise=True
     )
+    response = {"data": result.data}
     if result.errors:
-        return Response.json(
-            json.loads(json.dumps(result.errors, default=repr)), status=500
-        )
-    else:
-        return Response.json(result.data)
+        response["errors"] = [format_error(error) for error in result.errors]
+
+    return Response.json(response, status=200 if not result.errors else 500)
 
 
 @hookimpl
