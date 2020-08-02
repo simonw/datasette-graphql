@@ -43,11 +43,28 @@ If a column is a foreign key to another table, you can request columns of that t
 }
 ```
 
-Still to come:
+You can filter the rows returned for a specific table using the `filters:` argument. This accepts a list of filters, where a filter is a string of the form `column=value` or `column__op=value`. For example, to return just repositories with the Apache 2 license and more than 10 stars:
+
+```graphql
+{
+  repos(filters: ["license=apache-2.0", "stargazers_count__gt=10"]) {
+    full_name
+    stargazers_count
+    license {
+      key
+    }
+  }
+}
+```
+This is the same format used for querystring arguments to the Datasette table view, see [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation.
+
+## Still to come
+
+See [issues](https://github.com/simonw/datasette-graphql/issues) for a full list. Planned improvements include:
 
 - Pagination
-- Filtering (e.g. rows where age > X)
-- Much, much more
+- Canned query support
+- Ability to allowlist specific tables, views and canned queries
 
 ## Development
 
