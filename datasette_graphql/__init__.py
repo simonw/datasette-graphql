@@ -21,7 +21,9 @@ async def post_body(request):
 async def view_graphql(request, datasette):
     body = await post_body(request)
     if not body:
-        return Response.text("Hello from GraphQL")
+        return Response.html(
+            await datasette.render_template("graphiql.html", request=request)
+        )
 
     incoming = json.loads(body)
     query = incoming["query"]

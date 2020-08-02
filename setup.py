@@ -31,4 +31,5 @@ setup(
     install_requires=["datasette", "graphene>=2.0"],
     extras_require={"test": ["pytest", "pytest-asyncio", "httpx", "sqlite-utils"]},
     tests_require=["datasette-graphql[test]"],
+    package_data={"datasette_graphql": ["templates/*.html"]},
 )
