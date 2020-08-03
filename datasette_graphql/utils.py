@@ -62,7 +62,12 @@ async def schema_for_database(datasette, database=None, tables=None):
     Query = type(
         "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
     )
-    return graphene.Schema(query=Query, auto_camelcase=False)
+    return graphene.Schema(
+        query=Query,
+        auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
+            "auto_camelcase", False
+        ),
+    )
 
 
 def make_all_rows_resolver(db, table, klass):

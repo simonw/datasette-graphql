@@ -21,8 +21,20 @@ def db_path(tmp_path_factory):
     )
     db["repos"].insert_all(
         [
-            {"id": 1, "name": "datasette", "owner": 2, "license": "apache2"},
-            {"id": 2, "name": "dogspotter", "owner": 1, "license": "mit"},
+            {
+                "id": 1,
+                "full_name": "simonw/datasette",
+                "name": "datasette",
+                "owner": 2,
+                "license": "apache2",
+            },
+            {
+                "id": 2,
+                "full_name": "cleopaws/dogspotter",
+                "name": "dogspotter",
+                "owner": 1,
+                "license": "mit",
+            },
         ],
         pk="id",
         foreign_keys=(("owner", "users"), ("license", "licenses")),

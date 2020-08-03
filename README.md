@@ -18,7 +18,11 @@ Install this plugin in the same environment as Datasette.
 
 ## Usage
 
-This sets up `/graphql` as a GraphQL endpoint for the first attached database. Individual tables can be queried like this:
+This plugin up `/graphql` as a GraphQL endpoint for the first attached database.
+
+### Querying for tables and columns
+
+Individual tables can be queried like this:
 ```grophql
 {
   repos {
@@ -28,6 +32,8 @@ This sets up `/graphql` as a GraphQL endpoint for the first attached database. I
   }
 }
 ```
+
+### Accessing nested objects
 
 If a column is a foreign key to another table, you can request columns of that table using a nested query like this:
 ```graphql
@@ -43,6 +49,8 @@ If a column is a foreign key to another table, you can request columns of that t
 }
 ```
 
+### Filtering tables
+
 You can filter the rows returned for a specific table using the `filters:` argument. This accepts a list of filters, where a filter is a string of the form `column=value` or `column__op=value`. For example, to return just repositories with the Apache 2 license and more than 10 stars:
 
 ```graphql
@@ -57,6 +65,25 @@ You can filter the rows returned for a specific table using the `filters:` argum
 }
 ```
 This is the same format used for querystring arguments to the Datasette table view, see [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation.
+
+
+### Auto camelCase
+
+The names of your columns and tables default to being matched by their representations in GraphQL.
+
+If you have tables with `names_like_this` you may want to work with them in GraphQL using `namesLikeThis`, for consistency with GraphQL and JavaScript conventions.
+
+You can turn on automatic camelCase using the `"auto_camelcase"` plugin configuration setting in `metadata.json`, like this:
+
+```json
+{
+    "plugins": {
+        "datasette-graphql": {
+            "auto_camelcase": true
+        }
+    }
+}
+```
 
 ## Still to come
 

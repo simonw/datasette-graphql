@@ -144,3 +144,47 @@ async def test_graphql_error(ds):
                 }
             ],
         }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "on,expected",
+    [
+        (
+            True,
+            {
+                "repos": [
+                    {"id": 1, "fullName": "simonw/datasette"},
+                    {"id": 2, "fullName": "cleopaws/dogspotter"},
+                ]
+            },
+        ),
+        (
+            False,
+            {
+                "repos": [
+                    {"id": 1, "full_name": "simonw/datasette"},
+                    {"id": 2, "full_name": "cleopaws/dogspotter"},
+                ]
+            },
+        ),
+    ],
+)
+async def test_graphql_auto_camelcase(db_path, on, expected):
+    ds = Datasette(
+        [db_path], metadata={"plugins": {"datasette-graphql": {"auto_camelcase": on}}}
+    )
+    query = """
+    {
+        repos {
+            id
+            NAME
+        }
+    }
+    """.replace(
+        "NAME", "fullName" if on else "full_name"
+    )
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200
+        assert response.json() == {"data": expected}

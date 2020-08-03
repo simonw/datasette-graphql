@@ -1,3 +1,4 @@
+from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response
 from graphql.execution.executors.asyncio import AsyncioExecutor
@@ -51,3 +52,23 @@ def register_routes():
     return [
         (r"^/graphql$", view_graphql),
     ]
+
+
+@hookimpl
+def startup(datasette):
+    # Validate configuration
+    config = datasette.plugin_config("datasette-graphql") or {}
+    if "databases" in config:
+        if len(config["databases"].keys()) > 1:
+            raise ClickException(
+                "datasette-graphql currently only supports a single database"
+            )
+        database_name = list(config["databases"].keys())[0]
+        try:
+            datasette.get_database(database_name)
+        except KeyError:
+            raise ClickException(
+                "datasette-graphql config error: '{}' is not a connected database".format(
+                    database_name
+                )
+            )
