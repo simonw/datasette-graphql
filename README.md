@@ -62,7 +62,6 @@ This is the same format used for querystring arguments to the Datasette table vi
 
 See [issues](https://github.com/simonw/datasette-graphql/issues) for a full list. Planned improvements include:
 
-- GraphQL variable support
 - Pagination
 - Canned query support
 - Ability to allowlist specific tables, views and canned queries

@@ -98,6 +98,29 @@ async def test_graphql_query(ds, query, expected):
 
 
 @pytest.mark.asyncio
+async def test_graphql_variables(ds):
+    query = """
+    query specific_repo($filter: String) {
+        repos(filters:[$filter]) {
+            name
+            license {
+                key
+            }
+        }
+    }
+    """
+    variables = {"filter": "name=datasette"}
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post(
+            "http://localhost/graphql", json={"query": query, "variables": variables},
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "data": {"repos": [{"name": "datasette", "license": {"key": "apache2"}}]}
+        }
+
+
+@pytest.mark.asyncio
 async def test_graphql_error(ds):
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post(

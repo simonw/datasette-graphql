@@ -28,11 +28,16 @@ async def view_graphql(request, datasette):
 
     incoming = json.loads(body)
     query = incoming["query"]
+    variables = incoming.get("variables")
 
     schema = await schema_for_database(datasette)
 
     result = await graphql(
-        schema, query, executor=AsyncioExecutor(), return_promise=True
+        schema,
+        query,
+        variable_values=variables,
+        executor=AsyncioExecutor(),
+        return_promise=True,
     )
     response = {"data": result.data}
     if result.errors:
