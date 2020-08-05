@@ -44,6 +44,7 @@ class Repo(graphene.ObjectType):
     pushed_at = graphene.String()
     homepage = graphene.String()
     size = graphene.String()
+    stargazers_count = graphene.Int()
 
 
 class RepoEdge(graphene.ObjectType):
@@ -51,8 +52,14 @@ class RepoEdge(graphene.ObjectType):
     node = graphene.Field(Repo)
 
 
+class PageInfo(graphene.ObjectType):
+    endCursor = graphene.String()
+    hasNextPage = graphene.Boolean()
+
+
 class Repos(graphene.ObjectType):
     totalCount = graphene.Int()
+    pageInfo = graphene.Field(PageInfo)
     nodes = graphene.List(Repo)
     edges = graphene.List(RepoEdge)
 
@@ -67,6 +74,13 @@ class Repos(graphene.ObjectType):
             "cursor": path_from_row_pks(row, ["id"], use_rowid=False),
             "node": row
         } for row in parent]
+
+    def resolve_pageInfo(parent, info):
+        last_row = parent[-1]
+        return {
+            "endCursor": path_from_row_pks(last_row, ["id"], use_rowid=False),
+            "hasNextPage": False
+        }
 
 
 
@@ -97,7 +111,6 @@ def make_collection(db, table, table_class):
             "resolve_totalCount": total_count,
         },
     )
-    print(collection)
     return collection
 
 
@@ -152,17 +165,24 @@ async def schema_for_database(datasette, database=None, tables=None):
     to_add.append(("repos", graphene.Field(Repos, filters=graphene.List(graphene.String))))
 
     async def resolve_repos(root, info, filters=None):
+        table_name = "repos"
+        print("filters = ", filters)
         where_clause = ""
         params = {}
         if filters:
             pairs = [f.split("=", 1) for f in filters]
+            print("  pairs = ", pairs)
             filter_obj = Filters(pairs)
-            where_clause_bits, params = filter_obj.build_where_clauses(table)
+            where_clause_bits, params = filter_obj.build_where_clauses(table_name)
+            print("  where_clause_bits={}, params={}".format(
+                where_clause_bits, params
+            ))
             where_clause = " where " + " and ".join(where_clause_bits)
-        print("select * from [{}]{}".format("repos", where_clause), params)
+        print("select * from [{}]{}".format(table_name, where_clause), params)
         results = await db.execute(
-            "select * from [{}]{}".format("repos", where_clause), params
+            "select * from [{}]{}".format(table_name, where_clause), params
         )
+        print("len", len(results.rows))
         return [dict(row) for row in results.rows]
 
     to_add.append(("resolve_repos", resolve_repos))
