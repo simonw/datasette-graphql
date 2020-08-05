@@ -12,9 +12,12 @@ async def test_schema(ds):
 
     query = """{
         users {
-            name
-            points
-            score
+            totalCount
+            nodes {
+                name
+                points
+                score
+            }
         }
     }"""
 
@@ -22,8 +25,11 @@ async def test_schema(ds):
         schema, query, executor=AsyncioExecutor(), return_promise=True
     )
     assert result.data == {
-        "users": [
-            {"name": "cleopaws", "points": 5, "score": 51.5},
-            {"name": "simonw", "points": 3, "score": 35.2},
-        ]
-    }
+        "users": {
+            "totalCount": 2,
+            "nodes": [
+                {"name": "cleopaws", "points": 5, "score": 51.5},
+                {"name": "simonw", "points": 3, "score": 35.2},
+            ],
+        }
+    }, result.errors

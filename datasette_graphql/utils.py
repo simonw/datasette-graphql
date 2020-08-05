@@ -10,6 +10,37 @@ types = {
 }
 
 
+def make_collection(db, table, table_class):
+    edge_class = type(
+        "{}_edge".format(table),
+        (graphene.ObjectType,),
+        {"node": table_class, "cursor": graphene.String()},
+    )
+
+    async def total_count(parent, info):
+        # TODO: include where clause
+        return (await db.execute("select count(*) from [{}]{}".format(table))).first()[
+            0
+        ]
+
+    collection = type(
+        table,
+        (graphene.ObjectType,),
+        {
+            "nodes": graphene.List(of_type=table_class,),
+            "resolve_nodes": make_all_rows_resolver(db, table, table_class),
+            "edges": graphene.List(of_type=edge_class,),
+            "resolve_edges": make_all_rows_resolver(
+                db, table, table_class, edge_class=edge_class
+            ),
+            "totalCount": graphene.Int(),
+            "resolve_totalCount": total_count,
+        },
+    )
+    print(collection)
+    return collection
+
+
 async def schema_for_database(datasette, database=None, tables=None):
     db = datasette.get_database(database)
 
@@ -48,11 +79,7 @@ async def schema_for_database(datasette, database=None, tables=None):
         to_add.append(
             (
                 table,
-                graphene.List(
-                    of_type=table_class,
-                    args={"filters": graphene.List(graphene.String)},
-                    required=False,
-                ),
+                make_collection(db, table, table_class)()
             )
         )
         to_add.append(
@@ -70,7 +97,7 @@ async def schema_for_database(datasette, database=None, tables=None):
     )
 
 
-def make_all_rows_resolver(db, table, klass):
+def make_all_rows_resolver(db, table, klass, edge_class=None):
     async def resolve(parent, info, filters=None):
         where_clause = ""
         params = {}
@@ -82,7 +109,15 @@ def make_all_rows_resolver(db, table, klass):
         results = await db.execute(
             "select * from [{}]{}".format(table, where_clause), params
         )
-        return [klass(**dict(row)) for row in results.rows]
+        if edge_class:
+            return [
+                [
+                    edge_class(node=klass(**dict(row)), cursor="CURSOR")
+                    for row in result.rows
+                ]
+            ]
+        else:
+            return [klass(**dict(row)) for row in results.rows]
 
     return resolve
 
@@ -107,3 +142,8 @@ def make_table_getter(table_classes, table):
         return table_classes[table]
 
     return getter
+
+
+def paginate(db, table, where=None, first=100, after=None):
+    # Returns (rows_with_cursors, has_next_page)
+    pass
