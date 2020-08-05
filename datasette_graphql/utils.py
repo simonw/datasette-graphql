@@ -70,18 +70,17 @@ class Repos(graphene.ObjectType):
         return parent
 
     def resolve_edges(parent, info):
-        return [{
-            "cursor": path_from_row_pks(row, ["id"], use_rowid=False),
-            "node": row
-        } for row in parent]
+        return [
+            {"cursor": path_from_row_pks(row, ["id"], use_rowid=False), "node": row}
+            for row in parent
+        ]
 
     def resolve_pageInfo(parent, info):
         last_row = parent[-1]
         return {
             "endCursor": path_from_row_pks(last_row, ["id"], use_rowid=False),
-            "hasNextPage": False
+            "hasNextPage": False,
         }
-
 
 
 def make_collection(db, table, table_class):
@@ -151,22 +150,29 @@ async def schema_for_database(datasette, database=None, tables=None):
         table_classes[table] = table_class
         if table == "repos":
             continue
-        to_add.append(
-            (
-                table,
-                make_collection(db, table, table_class)()
-            )
-        )
+        to_add.append((table, make_collection(db, table, table_class)()))
         to_add.append(
             ("resolve_{}".format(table), make_all_rows_resolver(db, table, table_class))
         )
 
     # Special case for repos
-    to_add.append(("repos", graphene.Field(Repos, filters=graphene.List(graphene.String))))
+    to_add.append(
+        (
+            "repos",
+            graphene.Field(
+                Repos,
+                filters=graphene.List(graphene.String),
+                first=graphene.Int(),
+                after=graphene.String(),
+            ),
+        )
+    )
 
-    async def resolve_repos(root, info, filters=None):
+    async def resolve_repos(root, info, filters=None, first=None, after=None):
+        if first is None:
+            first = 10
         table_name = "repos"
-        print("filters = ", filters)
+        print("filters=", filters, "first=", first)
         where_clause = ""
         params = {}
         if filters:
@@ -174,13 +180,12 @@ async def schema_for_database(datasette, database=None, tables=None):
             print("  pairs = ", pairs)
             filter_obj = Filters(pairs)
             where_clause_bits, params = filter_obj.build_where_clauses(table_name)
-            print("  where_clause_bits={}, params={}".format(
-                where_clause_bits, params
-            ))
+            print("  where_clause_bits={}, params={}".format(where_clause_bits, params))
             where_clause = " where " + " and ".join(where_clause_bits)
         print("select * from [{}]{}".format(table_name, where_clause), params)
         results = await db.execute(
-            "select * from [{}]{}".format(table_name, where_clause), params
+            "select * from [{}]{} limit {}".format(table_name, where_clause, first),
+            params,
         )
         print("len", len(results.rows))
         return [dict(row) for row in results.rows]
