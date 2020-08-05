@@ -1,6 +1,25 @@
 from datasette.filters import Filters
 import graphene
+import urllib
 import sqlite_utils
+
+
+def path_from_row_pks(row, pks, use_rowid, quote=True):
+    """ Generate an optionally URL-quoted unique identifier
+        for a row from its primary keys."""
+    if use_rowid:
+        bits = [row["rowid"]]
+    else:
+        bits = [
+            row[pk]["value"] if isinstance(row[pk], dict) else row[pk] for pk in pks
+        ]
+    if quote:
+        bits = [urllib.parse.quote_plus(str(bit)) for bit in bits]
+    else:
+        bits = [str(bit) for bit in bits]
+
+    return ",".join(bits)
+
 
 types = {
     str: graphene.String(),
@@ -8,6 +27,47 @@ types = {
     int: graphene.Int(),
     bytes: graphene.String(),
 }
+
+
+class Repo(graphene.ObjectType):
+    id = graphene.String()
+    node_id = graphene.String()
+    name = graphene.String()
+    full_name = graphene.String()
+    private = graphene.String()
+    owner = graphene.String()
+    html_url = graphene.String()
+    description = graphene.String()
+    fork = graphene.String()
+    created_at = graphene.String()
+    updated_at = graphene.String()
+    pushed_at = graphene.String()
+    homepage = graphene.String()
+    size = graphene.String()
+
+
+class RepoEdge(graphene.ObjectType):
+    cursor = graphene.String()
+    node = graphene.Field(Repo)
+
+
+class Repos(graphene.ObjectType):
+    totalCount = graphene.Int()
+    nodes = graphene.List(Repo)
+    edges = graphene.List(RepoEdge)
+
+    def resolve_totalCount(parent, info):
+        return len(parent)
+
+    def resolve_nodes(parent, info):
+        return parent
+
+    def resolve_edges(parent, info):
+        return [{
+            "cursor": path_from_row_pks(row, ["id"], use_rowid=False),
+            "node": row
+        } for row in parent]
+
 
 
 def make_collection(db, table, table_class):
@@ -76,6 +136,8 @@ async def schema_for_database(datasette, database=None, tables=None):
 
         table_class = type(table, (graphene.ObjectType,), table_dict)
         table_classes[table] = table_class
+        if table == "repos":
+            continue
         to_add.append(
             (
                 table,
@@ -85,6 +147,25 @@ async def schema_for_database(datasette, database=None, tables=None):
         to_add.append(
             ("resolve_{}".format(table), make_all_rows_resolver(db, table, table_class))
         )
+
+    # Special case for repos
+    to_add.append(("repos", graphene.Field(Repos, filters=graphene.List(graphene.String))))
+
+    async def resolve_repos(root, info, filters=None):
+        where_clause = ""
+        params = {}
+        if filters:
+            pairs = [f.split("=", 1) for f in filters]
+            filter_obj = Filters(pairs)
+            where_clause_bits, params = filter_obj.build_where_clauses(table)
+            where_clause = " where " + " and ".join(where_clause_bits)
+        print("select * from [{}]{}".format("repos", where_clause), params)
+        results = await db.execute(
+            "select * from [{}]{}".format("repos", where_clause), params
+        )
+        return [dict(row) for row in results.rows]
+
+    to_add.append(("resolve_repos", resolve_repos))
 
     Query = type(
         "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
