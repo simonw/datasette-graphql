@@ -1,4 +1,5 @@
 from datasette.filters import Filters
+from datasette.utils.asgi import Request
 import graphene
 import urllib
 import sqlite_utils
@@ -64,22 +65,23 @@ class Repos(graphene.ObjectType):
     edges = graphene.List(RepoEdge)
 
     def resolve_totalCount(parent, info):
-        return len(parent)
+        return parent["filtered_table_rows_count"]
 
     def resolve_nodes(parent, info):
-        return parent
+        return parent["rows"]
 
     def resolve_edges(parent, info):
+        print("resolve edges", parent["rows"])
         return [
             {"cursor": path_from_row_pks(row, ["id"], use_rowid=False), "node": row}
-            for row in parent
+            for row in parent["rows"]
         ]
 
     def resolve_pageInfo(parent, info):
-        last_row = parent[-1]
+        last_row = parent["rows"][-1]
         return {
-            "endCursor": path_from_row_pks(last_row, ["id"], use_rowid=False),
-            "hasNextPage": False,
+            "endCursor": parent["next"],
+            "hasNextPage": parent["next"] is not None,
         }
 
 
@@ -173,22 +175,37 @@ async def schema_for_database(datasette, database=None, tables=None):
             first = 10
         table_name = "repos"
         print("filters=", filters, "first=", first)
-        where_clause = ""
-        params = {}
+
+        pairs = []
         if filters:
             pairs = [f.split("=", 1) for f in filters]
-            print("  pairs = ", pairs)
-            filter_obj = Filters(pairs)
-            where_clause_bits, params = filter_obj.build_where_clauses(table_name)
-            print("  where_clause_bits={}, params={}".format(where_clause_bits, params))
-            where_clause = " where " + " and ".join(where_clause_bits)
-        print("select * from [{}]{}".format(table_name, where_clause), params)
-        results = await db.execute(
-            "select * from [{}]{} limit {}".format(table_name, where_clause, first),
-            params,
+
+        # Construct a fake request and send it through TableView
+        from datasette.views.table import TableView
+
+        qs = {}
+        qs.update(pairs)
+        if after:
+            qs["_next"] = after
+        qs["_size"] = first
+        path_with_query_string = "/{}/{}.json?{}".format(
+            "github", table_name, urllib.parse.urlencode(qs)
         )
-        print("len", len(results.rows))
-        return [dict(row) for row in results.rows]
+        print(path_with_query_string)
+        request = Request.fake(path_with_query_string)
+
+        view = TableView(datasette)
+        data, _, _ = await view.data(
+            request, database="github", hash=None, table=table_name, _next=after
+        )
+
+        import json
+
+        print()
+        print(json.dumps(data, indent=4, default=repr))
+        print()
+        data["rows"] = [dict(r) for r in data["rows"]]
+        return data
 
     to_add.append(("resolve_repos", resolve_repos))
 
