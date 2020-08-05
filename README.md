@@ -18,7 +18,7 @@ Install this plugin in the same environment as Datasette.
 
 ## Usage
 
-This plugin up `/graphql` as a GraphQL endpoint for the first attached database.
+This plugin sets up `/graphql` as a GraphQL endpoint for the first attached database.
 
 ### Querying for tables and columns
 
@@ -65,7 +65,6 @@ You can filter the rows returned for a specific table using the `filters:` argum
 }
 ```
 This is the same format used for querystring arguments to the Datasette table view, see [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation.
-
 
 ### Auto camelCase
 
