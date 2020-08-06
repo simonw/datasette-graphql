@@ -8,7 +8,7 @@ A GraphQL endpoint for Datasette
 
 **Work in progress alpha** - this has many missing features.
 
-Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://datasette-graphql-demo.datasette.io/graphql?query=%7B%0A%20%20repos%20%7B%0A%20%20%20%20full_name%0A%20%20%20%20id%0A%20%20%7D%0A%7D).
+Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://datasette-graphql-demo.datasette.io/graphql?query=%7B%0A%20%20repos%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20id%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A).
 
 ## Installation
 
@@ -102,7 +102,7 @@ Requesting the `pageInfo.endCursor` field provides you with the value you need t
 
 ```graphql
 {
-  repos(first: 20, after: "2341") {
+  repos(first: 20, after: "134874019") {
     totalCount
     pageInfo {
       hasNextPage
