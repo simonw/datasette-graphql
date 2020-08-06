@@ -21,7 +21,6 @@ async def post_body(request):
 
 
 async def view_graphql(request, datasette):
-    config = datasette.plugin_config("datasette-graphql") or {}
     body = await post_body(request)
     database = request.url_vars.get("database")
 
@@ -35,7 +34,7 @@ async def view_graphql(request, datasette):
                 "Access-Control-Allow-Method": "POST",
                 "Access-Control-Allow-Origin": "*",
             }
-            if not config.get("disable_cors")
+            if datasette.cors
             else {},
         )
 
@@ -64,7 +63,7 @@ async def view_graphql(request, datasette):
             "Access-Control-Request-Method": "POST",
             "Access-Control-Allow-Origin": "*",
         }
-        if not config.get("disable_cors")
+        if datasette.cors
         else {},
     )
 

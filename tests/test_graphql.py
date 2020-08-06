@@ -421,10 +421,7 @@ async def test_graphql_multiple_databases(db_path, db_path2):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("cors_enabled", [True, False])
 async def test_cors_headers(db_path, cors_enabled):
-    ds = Datasette(
-        [db_path],
-        metadata={"plugins": {"datasette-graphql": {"disable_cors": not cors_enabled}}},
-    )
+    ds = Datasette([db_path], cors=cors_enabled,)
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.options("http://localhost/graphql")
         assert response.status_code == 200
