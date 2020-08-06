@@ -25,7 +25,7 @@ async def test_graphiql():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "query,expected",
+    "query,expected,errors",
     [
         (
             """{
@@ -45,6 +45,7 @@ async def test_graphiql():
                     ]
                 }
             },
+            None,
         ),
         # Nested query with foreign keys
         (
@@ -85,6 +86,7 @@ async def test_graphiql():
                     ]
                 }
             },
+            None,
         ),
         # Nullable foreign key
         (
@@ -114,6 +116,7 @@ async def test_graphiql():
                     ]
                 }
             },
+            None,
         ),
         # Filters
         (
@@ -126,14 +129,48 @@ async def test_graphiql():
                 }
             }""",
             {"users": {"nodes": [{"name": "cleopaws", "score": 51.5}]}},
+            None,
+        ),
+        # Search
+        (
+            """{
+                repos(search:"cleopaws") {
+                    nodes {
+                        full_name
+                    }
+                }
+            }""",
+            {"repos": {"nodes": [{"full_name": "cleopaws/dogspotter"}]}},
+            None,
+        ),
+        # Search fails on table that doesn't support it
+        (
+            """{
+                users(search:"cleopaws") {
+                    nodes {
+                        name
+                    }
+                }
+            }""",
+            None,
+            [
+                {
+                    "message": 'Unknown argument "search" on field "users" of type "Query".',
+                    "locations": [{"line": 2, "column": 23}],
+                }
+            ],
         ),
     ],
 )
-async def test_graphql_query(ds, query, expected):
+async def test_graphql_query(ds, query, expected, errors):
     async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query},)
-        assert response.status_code == 200
-        assert response.json() == {"data": expected}
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        if errors:
+            assert response.status_code == 500
+            assert response.json()["errors"] == errors
+        else:
+            assert response.status_code == 200
+        assert response.json()["data"] == expected
 
 
 @pytest.mark.asyncio

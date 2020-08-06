@@ -45,7 +45,7 @@ def db_path(tmp_path_factory):
         ],
         pk="id",
         foreign_keys=(("owner", "users"), ("license", "licenses")),
-    )
+    ).enable_fts(["full_name"], fts_version="FTS4")
     db["issues"].insert_all(
         [{"id": 111, "title": "Not enough dog stuff", "user": 1, "repo": 1}],
         pk="id",

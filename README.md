@@ -98,7 +98,7 @@ By default the first 10 rows will be returned. You can control this using the `f
 
 The `totalCount` field returns the total number of records that match the query.
 
-Requesting the `pageInfo.endCursor` field provides you with the value you need to request the next page. You can pass this to the `after: ` argument to request the next page.
+Requesting the `pageInfo.endCursor` field provides you with the value you need to request the next page. You can pass this to the `after:` argument to request the next page.
 
 ```graphql
 {
@@ -120,6 +120,28 @@ Requesting the `pageInfo.endCursor` field provides you with the value you need t
 ```
 
 The `hasNextPage` field tells you if there are any more records.
+
+### Search
+
+If a table has been configured to use SQLite full-text search you can execute searches against it using the `search:` argument:
+
+```graphql
+{
+  repos(search: "datasette") {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      full_name
+      description
+    }
+  }
+}
+```
+
+The [sqlite-utils](https://sqlite-utils.readthedocs.io/) Python library and CLI tool can be used to add full-text search to an existing database table.
 
 ### Auto camelCase
 

@@ -31,9 +31,10 @@ async def schema_for_database(datasette, database=None, tables=None):
             columns = db[table].columns_dict
             foreign_keys = db[table].foreign_keys
             pks = db[table].pks
-            return columns, foreign_keys, pks
+            supports_fts = bool(db[table].detect_fts())
+            return columns, foreign_keys, pks, supports_fts
 
-        columns, foreign_keys, pks = await db.execute_fn(introspect_table)
+        columns, foreign_keys, pks, supports_fts = await db.execute_fn(introspect_table)
         fks_by_column = {fk.column: fk for fk in foreign_keys}
 
         # Create a node class for this table
@@ -60,21 +61,23 @@ async def schema_for_database(datasette, database=None, tables=None):
         table_collection_class = make_table_collection_class(
             table, table_node_class, pks
         )
+        table_collection_kwargs = dict(
+            filters=graphene.List(graphene.String),
+            first=graphene.Int(),
+            after=graphene.String(),
+        )
+        if supports_fts:
+            table_collection_kwargs["search"] = graphene.String()
+
         to_add.append(
-            (
-                table,
-                graphene.Field(
-                    table_collection_class,
-                    filters=graphene.List(graphene.String),
-                    first=graphene.Int(),
-                    after=graphene.String(),
-                ),
-            )
+            (table, graphene.Field(table_collection_class, **table_collection_kwargs))
         )
         to_add.append(
             (
                 "resolve_{}".format(table),
-                make_table_resolver(datasette, db.name, table, table_node_class),
+                make_table_resolver(
+                    datasette, db.name, table, table_node_class, supports_fts
+                ),
             )
         )
 
@@ -127,10 +130,12 @@ def make_table_collection_class(table, table_class, pks):
     return _TableCollection
 
 
-def make_table_resolver(datasette, database_name, table_name, klass):
+def make_table_resolver(datasette, database_name, table_name, klass, supports_fts):
     from datasette.views.table import TableView
 
-    async def resolve_table(root, info, filters=None, first=None, after=None):
+    async def resolve_table(
+        root, info, filters=None, first=None, after=None, search=None
+    ):
         if first is None:
             first = 10
 
@@ -143,6 +148,10 @@ def make_table_resolver(datasette, database_name, table_name, klass):
         if after:
             qs["_next"] = after
         qs["_size"] = first
+
+        if search and supports_fts:
+            qs["_search"] = search
+
         path_with_query_string = "/{}/{}.json?{}".format(
             database_name, table_name, urllib.parse.urlencode(qs)
         )
