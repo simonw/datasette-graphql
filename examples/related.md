@@ -5,7 +5,7 @@
     users {
         nodes {
             name
-            repos_list {
+            repos_list(first: 1) {
                 totalCount
                 pageInfo {
                     endCursor
@@ -54,8 +54,8 @@ Expected output:
                 "repos_list": {
                     "totalCount": 2,
                     "pageInfo": {
-                        "endCursor": null,
-                        "hasNextPage": false
+                        "endCursor": "1",
+                        "hasNextPage": true
                     },
                     "nodes": [
                         {
@@ -64,10 +64,6 @@ Expected output:
                                 "key": "apache2",
                                 "name": "Apache 2"
                             }
-                        },
-                        {
-                            "name": "private",
-                            "license": null
                         }
                     ]
                 }

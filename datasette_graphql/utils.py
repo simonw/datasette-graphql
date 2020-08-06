@@ -94,13 +94,14 @@ async def schema_for_database(datasette, database=None, tables=None):
                 )
             else:
                 table_dict[colname] = types[coltype]
-        # Now add the backwards foreign key fields
+
+        # Now add the backwards foreign key fields for related items
         for fk in fks_back:
-            # TODO: Add arguments
             table_dict["{}_list".format(fk.table)] = graphene.Field(
-                make_table_collection_getter(table_collection_classes, fk.table)
+                make_table_collection_getter(table_collection_classes, fk.table),
+                first=graphene.Int(),
+                after=graphene.String(),
             )
-            # TODO: Add resolver
             table_dict["resolve_{}_list".format(fk.table)] = make_table_resolver(
                 datasette,
                 db.name,

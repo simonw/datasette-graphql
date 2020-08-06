@@ -68,7 +68,7 @@ Consider a `users` table which is related to `repos` - a repo has a foreign key 
   users(first: 1, search:"simonw") {
     nodes {
       name
-      repos_list {
+      repos_list(first: 5) {
         totalCount
         nodes {
           full_name
