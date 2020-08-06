@@ -1,5 +1,8 @@
 from datasette.app import Datasette
+import json
+import pathlib
 import pytest
+import re
 import httpx
 from .fixtures import ds, db_path, db_path2
 
@@ -25,124 +28,8 @@ async def test_graphiql():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "query,expected,errors",
+    "query,expected_errors",
     [
-        (
-            """{
-                users {
-                    nodes {
-                        name
-                        points
-                        score
-                    }
-                }
-            }""",
-            {
-                "users": {
-                    "nodes": [
-                        {"name": "cleopaws", "points": 5, "score": 51.5},
-                        {"name": "simonw", "points": 3, "score": 35.2},
-                    ]
-                }
-            },
-            None,
-        ),
-        # Nested query with foreign keys
-        (
-            """{
-                issues {
-                    nodes {
-                        title
-                        user {
-                            id
-                            name
-                        }
-                        repo {
-                            name
-                            license {
-                                key
-                                name
-                            }
-                            owner {
-                                id
-                                name
-                            }
-                        }
-                    }
-                }
-            }""",
-            {
-                "issues": {
-                    "nodes": [
-                        {
-                            "title": "Not enough dog stuff",
-                            "user": {"id": 1, "name": "cleopaws"},
-                            "repo": {
-                                "name": "datasette",
-                                "license": {"key": "apache2", "name": "Apache 2"},
-                                "owner": {"id": 2, "name": "simonw"},
-                            },
-                        }
-                    ]
-                }
-            },
-            None,
-        ),
-        # Nullable foreign key
-        (
-            """{
-                repos {
-                    nodes {
-                        name
-                        license {
-                            key
-                            name
-                        }
-                    }
-                }
-            }""",
-            {
-                "repos": {
-                    "nodes": [
-                        {
-                            "name": "datasette",
-                            "license": {"key": "apache2", "name": "Apache 2"},
-                        },
-                        {
-                            "name": "dogspotter",
-                            "license": {"key": "mit", "name": "MIT"},
-                        },
-                        {"name": "private", "license": None},
-                    ]
-                }
-            },
-            None,
-        ),
-        # Filters
-        (
-            """{
-                users(filters:["score__gt=50"]) {
-                    nodes {
-                        name
-                        score
-                    }
-                }
-            }""",
-            {"users": {"nodes": [{"name": "cleopaws", "score": 51.5}]}},
-            None,
-        ),
-        # Search
-        (
-            """{
-                repos(search:"cleopaws") {
-                    nodes {
-                        full_name
-                    }
-                }
-            }""",
-            {"repos": {"nodes": [{"full_name": "cleopaws/dogspotter"}]}},
-            None,
-        ),
         # Search fails on table that doesn't support it
         (
             """{
@@ -152,7 +39,6 @@ async def test_graphiql():
                     }
                 }
             }""",
-            None,
             [
                 {
                     "message": 'Unknown argument "search" on field "users" of type "Query".',
@@ -160,99 +46,31 @@ async def test_graphiql():
                 }
             ],
         ),
-        # sort
-        (
-            """{
-                users(sort: points) {
-                    nodes {
-                        name
-                        points
-                    }
-                }
-            }""",
-            {
-                "users": {
-                    "nodes": [
-                        {"name": "simonw", "points": 3},
-                        {"name": "cleopaws", "points": 5},
-                    ]
-                }
-            },
-            None,
-        ),
-        # sort_desc
-        (
-            """{
-                users(sort_desc: points) {
-                    nodes {
-                        name
-                        points
-                    }
-                }
-            }""",
-            {
-                "users": {
-                    "nodes": [
-                        {"name": "cleopaws", "points": 5},
-                        {"name": "simonw", "points": 3},
-                    ]
-                }
-            },
-            None,
-        ),
-        # SQL view
-        (
-            """{
-                view_on_paginate_by_pk(first: 3) {
-                    nodes {
-                        pk
-                        name
-                    }
-                }
-            }""",
-            {
-                "view_on_paginate_by_pk": {
-                    "nodes": [
-                        {"pk": 1, "name": "Row 1"},
-                        {"pk": 2, "name": "Row 2"},
-                        {"pk": 3, "name": "Row 3"},
-                    ]
-                }
-            },
-            None,
-        ),
-        # Binary content is base64 encoded
-        (
-            """{
-                images {
-                    nodes {
-                        path
-                        content
-                    }
-                }
-            }""",
-            {
-                "images": {
-                    "nodes": [
-                        {
-                            "path": "1x1.gif",
-                            "content": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-                        }
-                    ]
-                }
-            },
-            None,
-        ),
     ],
 )
-async def test_graphql_query(ds, query, expected, errors):
+async def test_graphql_errors(ds, query, expected_errors):
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post("http://localhost/graphql", json={"query": query})
-        if errors:
-            assert response.status_code == 500
-            assert response.json()["errors"] == errors
-        else:
-            assert response.status_code == 200
+        assert response.status_code == 500
+        assert response.json()["errors"] == expected_errors
+
+
+_graphql_re = re.compile("```graphql(.*?)```", re.DOTALL)
+_json_re = re.compile("```json(.*?)```", re.DOTALL)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path", (pathlib.Path(__file__).parent.parent / "examples").glob("*.md")
+)
+async def test_graphql_examples(ds, path):
+    print(path)
+    content = path.read_text()
+    query = _graphql_re.search(content)[1]
+    expected = json.loads(_json_re.search(content)[1])
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200
         assert response.json()["data"] == expected
 
 
