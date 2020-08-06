@@ -5,6 +5,7 @@ from datasette.utils.asgi import Request
 import graphene
 import urllib
 import sqlite_utils
+import wrapt
 
 
 class Bytes(graphene.Scalar):
@@ -173,6 +174,13 @@ def make_table_collection_class(table, table_class, pks):
     return _TableCollection
 
 
+class DatasetteSpecialConfig(wrapt.ObjectProxy):
+    def config(self, key):
+        if key == "suggest_facets":
+            return False
+        return self.__wrapped__.config(key)
+
+
 def make_table_resolver(datasette, database_name, table_name, klass, supports_fts):
     from datasette.views.table import TableView
 
@@ -212,7 +220,7 @@ def make_table_resolver(datasette, database_name, table_name, klass, supports_ft
         )
         request = Request.fake(path_with_query_string)
 
-        view = TableView(datasette)
+        view = TableView(DatasetteSpecialConfig(datasette))
         data, _, _ = await view.data(
             request, database=database_name, hash=None, table=table_name, _next=after
         )
