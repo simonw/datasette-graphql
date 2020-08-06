@@ -168,7 +168,10 @@ def make_fk_resolver(db, table, table_classes, fk):
         params = {"v": pk}
         results = await db.execute(sql, params)
         fk_class = table_classes[fk.other_table]
-        return [fk_class(**dict(row)) for row in results.rows][0]
+        try:
+            return [fk_class(**dict(row)) for row in results.rows][0]
+        except IndexError:
+            return None
 
     return resolve_foreign_key
 

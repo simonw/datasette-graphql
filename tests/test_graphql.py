@@ -46,7 +46,7 @@ async def test_graphiql():
                 }
             },
         ),
-        # Nested query
+        # Nested query with foreign keys
         (
             """{
                 issues {
@@ -82,6 +82,35 @@ async def test_graphiql():
                                 "owner": {"id": 2, "name": "simonw"},
                             },
                         }
+                    ]
+                }
+            },
+        ),
+        # Nullable foreign key
+        (
+            """{
+                repos {
+                    nodes {
+                        name
+                        license {
+                            key
+                            name
+                        }
+                    }
+                }
+            }""",
+            {
+                "repos": {
+                    "nodes": [
+                        {
+                            "name": "datasette",
+                            "license": {"key": "apache2", "name": "Apache 2"},
+                        },
+                        {
+                            "name": "dogspotter",
+                            "license": {"key": "mit", "name": "MIT"},
+                        },
+                        {"name": "private", "license": None},
                     ]
                 }
             },

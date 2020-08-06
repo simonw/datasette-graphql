@@ -35,6 +35,13 @@ def db_path(tmp_path_factory):
                 "owner": 1,
                 "license": "mit",
             },
+            {
+                "id": 3,
+                "full_name": "simonw/private",
+                "name": "private",
+                "owner": 2,
+                "license": None,
+            },
         ],
         pk="id",
         foreign_keys=(("owner", "users"), ("license", "licenses")),
