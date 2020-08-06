@@ -221,6 +221,28 @@ async def test_graphiql():
             },
             None,
         ),
+        # Binary content is base64 encoded
+        (
+            """{
+                images {
+                    nodes {
+                        path
+                        content
+                    }
+                }
+            }""",
+            {
+                "images": {
+                    "nodes": [
+                        {
+                            "path": "1x1.gif",
+                            "content": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+                        }
+                    ]
+                }
+            },
+            None,
+        ),
     ],
 )
 async def test_graphql_query(ds, query, expected, errors):

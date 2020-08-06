@@ -2,6 +2,8 @@ from datasette.app import Datasette
 import pytest
 import sqlite_utils
 
+GIF_1x1 = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;"
+
 
 @pytest.fixture(scope="session")
 def db_path(tmp_path_factory):
@@ -51,6 +53,7 @@ def db_path(tmp_path_factory):
         pk="id",
         foreign_keys=("user", "repo"),
     )
+    db["images"].insert({"path": "1x1.gif", "content": GIF_1x1}, pk="path")
     # To test pagination with both rowid, single-pk and compound-pk tables:
     db["paginate_by_rowid"].insert_all(
         [{"name": "Row {}".format(i)} for i in range(1, 22)]

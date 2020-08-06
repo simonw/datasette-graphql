@@ -1,3 +1,4 @@
+from base64 import b64decode, b64encode
 from enum import Enum
 from datasette.filters import Filters
 from datasette.utils.asgi import Request
@@ -5,11 +6,33 @@ import graphene
 import urllib
 import sqlite_utils
 
+
+class Bytes(graphene.Scalar):
+    # Replace with graphene.Base64 after graphene 3.0 is released
+    @staticmethod
+    def serialize(value):
+        if isinstance(value, bytes):
+            return b64encode(value).decode("utf-8")
+        return value
+
+    @classmethod
+    def parse_literal(cls, node):
+        if isinstance(node, ast.StringValue):
+            return cls.parse_value(node.value)
+
+    @staticmethod
+    def parse_value(value):
+        if isinstance(value, bytes):
+            return value
+        else:
+            return b64decode(value)
+
+
 types = {
     str: graphene.String(),
     float: graphene.Float(),
     int: graphene.Int(),
-    bytes: graphene.String(),
+    bytes: Bytes(),
 }
 
 
