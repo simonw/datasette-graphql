@@ -23,12 +23,15 @@ This plugin sets up `/graphql` as a GraphQL endpoint for the first attached data
 ### Querying for tables and columns
 
 Individual tables can be queried like this:
-```grophql
+
+```graphql
 {
   repos {
-    id
-    full_name
-    description
+    nodes {
+      id
+      full_name
+      description
+    }
   }
 }
 ```
@@ -39,11 +42,13 @@ If a column is a foreign key to another table, you can request columns of that t
 ```graphql
 {
   repos {
-    id
-    full_name
-    owner {
+    nodes {
       id
-      login
+      full_name
+      owner {
+        id
+        login
+      }
     }
   }
 }
@@ -56,15 +61,65 @@ You can filter the rows returned for a specific table using the `filters:` argum
 ```graphql
 {
   repos(filters: ["license=apache-2.0", "stargazers_count__gt=10"]) {
-    full_name
-    stargazers_count
-    license {
-      key
+    nodes {
+      full_name
+      stargazers_count
+      license {
+        key
+      }
     }
   }
 }
 ```
 This is the same format used for querystring arguments to the Datasette table view, see [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation.
+
+### Pagination
+
+By default the first 10 rows will be returned. You can control this using the `first:` argument.
+
+```graphql
+{
+  repos(first: 20) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      full_name
+      stargazers_count
+      license {
+        key
+      }
+    }
+  }
+}
+```
+
+The `totalCount` field returns the total number of records that match the query.
+
+Requesting the `pageInfo.endCursor` field provides you with the value you need to request the next page. You can pass this to the `after: ` argument to request the next page.
+
+```graphql
+{
+  repos(first: 20, after: "2341") {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nodes {
+      full_name
+      stargazers_count
+      license {
+        key
+      }
+    }
+  }
+}
+```
+
+The `hasNextPage` field tells you if there are any more records.
 
 ### Auto camelCase
 
@@ -88,7 +143,6 @@ You can turn on automatic camelCase using the `"auto_camelcase"` plugin configur
 
 See [issues](https://github.com/simonw/datasette-graphql/issues) for a full list. Planned improvements include:
 
-- Pagination
 - Canned query support
 - Ability to allowlist specific tables, views and canned queries
 
