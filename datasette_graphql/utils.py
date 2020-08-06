@@ -24,15 +24,21 @@ async def schema_for_database(datasette, database=None, tables=None):
     # For each table, expose a graphene.List
     to_add = []
     table_classes = {}
-    for table in await db.table_names():
+    table_names = await db.table_names()
+    view_names = await db.view_names()
+    for table in table_names + view_names:
         # Perform all introspection in a single call to the execute_fn thread
-
         def introspect_table(conn):
             db = sqlite_utils.Database(conn)
             columns = db[table].columns_dict
-            foreign_keys = db[table].foreign_keys
-            pks = db[table].pks
-            supports_fts = bool(db[table].detect_fts())
+            foreign_keys = []
+            pks = []
+            supports_fts = False
+            if hasattr(db[table], "foreign_keys"):
+                # Views don't have this
+                foreign_keys = db[table].foreign_keys
+                pks = db[table].pks
+                supports_fts = bool(db[table].detect_fts())
             return columns, foreign_keys, pks, supports_fts
 
         columns, foreign_keys, pks, supports_fts = await db.execute_fn(introspect_table)

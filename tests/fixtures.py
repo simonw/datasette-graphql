@@ -66,6 +66,7 @@ def db_path(tmp_path_factory):
         ],
         pk=("pk1", "pk2"),
     )
+    db.create_view("view_on_paginate_by_pk", "select * from paginate_by_pk")
     return db_path
 
 

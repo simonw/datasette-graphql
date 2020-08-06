@@ -20,7 +20,7 @@ This plugin sets up `/graphql` as a GraphQL endpoint for the first attached data
 
 ### Querying for tables and columns
 
-Individual tables can be queried like this:
+Individual tables (and SQL views) can be queried like this:
 
 ```graphql
 {
@@ -34,9 +34,12 @@ Individual tables can be queried like this:
 }
 ```
 
+In this example query the underlying database table is called `repos` and its columns include `id`, `full_name` and `description`.
+
 ### Accessing nested objects
 
-If a column is a foreign key to another table, you can request columns of that table using a nested query like this:
+If a column is a foreign key to another table, you can request columns from the table pointed to by that foreign key using a nested query like this:
+
 ```graphql
 {
   repos {
