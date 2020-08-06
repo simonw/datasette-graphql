@@ -3,9 +3,12 @@ from enum import Enum
 from datasette.filters import Filters
 from datasette.utils.asgi import Request
 import graphene
+import re
 import urllib
 import sqlite_utils
 import wrapt
+
+re_named_parameter = re.compile(":([a-zA-Z0-9_]+)")
 
 
 class Bytes(graphene.Scalar):
@@ -146,6 +149,29 @@ async def schema_for_database(datasette, database=None, tables=None):
                 ),
             )
         )
+
+    # Add canned queries for this database
+    canned_queries = await datasette.get_canned_queries(database, actor=None)
+    for canned_query in canned_queries:
+        canned_query_name = canned_query["name"]
+        named_parameters = canned_query.get("params") or re_named_parameter.findall(
+            canned_query["sql"]
+        )
+        # TODO: Finish this bit
+        # to_add.append(
+        #     (
+        #         canned_query_name,
+        #         graphene.Field(table_collection_class, **table_collection_kwargs),
+        #     )
+        # )
+        # to_add.append(
+        #     (
+        #         "resolve_{}".format(table),
+        #         make_table_resolver(
+        #             datasette, db.name, table, table_classes, supports_fts
+        #         ),
+        #     )
+        # )
 
     Query = type(
         "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
