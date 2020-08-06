@@ -57,6 +57,28 @@ If a column is a foreign key to another table, you can request columns from the 
 }
 ```
 
+### Accessing related objects
+
+If another table has a foreign key back to the table you are accessing, you can fetch rows from that related table.
+
+Consider a `users` table which is related to `repos` - a repo has a foreign key back to the user that owns the repository. The `users` object type will have a `repos_list` field which can be used to access those related repos:
+
+```graphql
+{
+  users(first: 1, search:"simonw") {
+    nodes {
+      name
+      repos_list {
+        totalCount
+        nodes {
+          full_name
+        }
+      }
+    }
+  }
+}
+```
+
 ### Filtering tables
 
 You can filter the rows returned for a specific table using the `filters:` argument. This accepts a list of filters, where a filter is a string of the form `column=value` or `column__op=value`. For example, to return just repositories with the Apache 2 license and more than 10 stars:

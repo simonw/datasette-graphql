@@ -48,6 +48,7 @@ async def schema_for_database(datasette, database=None, tables=None):
     # For each table, expose a graphene.List
     to_add = []
     table_classes = {}
+    table_collection_classes = {}
     table_names = await db.table_names()
     view_names = await db.view_names()
     for table in table_names + view_names:
@@ -58,14 +59,22 @@ async def schema_for_database(datasette, database=None, tables=None):
             foreign_keys = []
             pks = []
             supports_fts = False
+            fks_back = []
             if hasattr(db[table], "foreign_keys"):
                 # Views don't have this
                 foreign_keys = db[table].foreign_keys
                 pks = db[table].pks
                 supports_fts = bool(db[table].detect_fts())
-            return columns, foreign_keys, pks, supports_fts
+                # Gather all foreign keys pointing back here
+                collected = []
+                for t in db.tables:
+                    collected.extend(t.foreign_keys)
+                fks_back = [f for f in collected if f.other_table == table]
+            return columns, foreign_keys, fks_back, pks, supports_fts
 
-        columns, foreign_keys, pks, supports_fts = await db.execute_fn(introspect_table)
+        columns, foreign_keys, fks_back, pks, supports_fts = await db.execute_fn(
+            introspect_table
+        )
         fks_by_column = {fk.column: fk for fk in foreign_keys}
 
         # Create a node class for this table
@@ -85,6 +94,24 @@ async def schema_for_database(datasette, database=None, tables=None):
                 )
             else:
                 table_dict[colname] = types[coltype]
+        # Now add the backwards foreign key fields
+        for fk in fks_back:
+            # TODO: Add arguments
+            table_dict["{}_list".format(fk.table)] = graphene.Field(
+                make_table_collection_getter(table_collection_classes, fk.table)
+            )
+            # TODO: Add resolver
+            table_dict["resolve_{}_list".format(fk.table)] = make_table_resolver(
+                datasette,
+                db.name,
+                fk.table,
+                table_classes,
+                supports_fts,
+                default_where="[{}] = ".format(fk.column)
+                + "{root."
+                + fk.other_column
+                + "}",
+            )
 
         table_node_class = type(table, (graphene.ObjectType,), table_dict)
         table_classes[table] = table_node_class
@@ -105,6 +132,8 @@ async def schema_for_database(datasette, database=None, tables=None):
         if supports_fts:
             table_collection_kwargs["search"] = graphene.String()
 
+        table_collection_classes[table] = table_collection_class
+
         to_add.append(
             (table, graphene.Field(table_collection_class, **table_collection_kwargs))
         )
@@ -112,7 +141,7 @@ async def schema_for_database(datasette, database=None, tables=None):
             (
                 "resolve_{}".format(table),
                 make_table_resolver(
-                    datasette, db.name, table, table_node_class, supports_fts
+                    datasette, db.name, table, table_classes, supports_fts
                 ),
             )
         )
@@ -181,7 +210,14 @@ class DatasetteSpecialConfig(wrapt.ObjectProxy):
         return self.__wrapped__.config(key)
 
 
-def make_table_resolver(datasette, database_name, table_name, klass, supports_fts):
+def make_table_resolver(
+    datasette,
+    database_name,
+    table_name,
+    table_classes,
+    supports_fts,
+    default_where=None,
+):
     from datasette.views.table import TableView
 
     async def resolve_table(
@@ -215,6 +251,9 @@ def make_table_resolver(datasette, database_name, table_name, klass, supports_ft
         elif sort_desc:
             qs["_sort_desc"] = sort_desc
 
+        if default_where:
+            qs["_where"] = default_where.format(root=root)
+
         path_with_query_string = "/{}/{}.json?{}".format(
             database_name, table_name, urllib.parse.urlencode(qs)
         )
@@ -224,6 +263,7 @@ def make_table_resolver(datasette, database_name, table_name, klass, supports_ft
         data, _, _ = await view.data(
             request, database=database_name, hash=None, table=table_name, _next=after
         )
+        klass = table_classes[table_name]
         data["rows"] = [klass(**dict(r)) for r in data["rows"]]
         return data
 
@@ -251,6 +291,13 @@ def make_fk_resolver(db, table, table_classes, fk):
 def make_table_getter(table_classes, table):
     def getter():
         return table_classes[table]
+
+    return getter
+
+
+def make_table_collection_getter(table_collection_classes, table):
+    def getter():
+        return table_collection_classes[table]
 
     return getter
 
