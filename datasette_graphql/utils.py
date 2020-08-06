@@ -1,5 +1,7 @@
 from datasette.filters import Filters
+from datasette.utils.asgi import Request
 import graphene
+import urllib
 import sqlite_utils
 
 types = {
@@ -8,6 +10,11 @@ types = {
     int: graphene.Int(),
     bytes: graphene.String(),
 }
+
+
+class PageInfo(graphene.ObjectType):
+    endCursor = graphene.String()
+    hasNextPage = graphene.Boolean()
 
 
 async def schema_for_database(datasette, database=None, tables=None):
@@ -23,13 +30,16 @@ async def schema_for_database(datasette, database=None, tables=None):
             db = sqlite_utils.Database(conn)
             columns = db[table].columns_dict
             foreign_keys = db[table].foreign_keys
-            return columns, foreign_keys
+            pks = db[table].pks
+            return columns, foreign_keys, pks
 
-        columns, foreign_keys = await db.execute_fn(introspect_table)
+        columns, foreign_keys, pks = await db.execute_fn(introspect_table)
         fks_by_column = {fk.column: fk for fk in foreign_keys}
 
-        # Create a class for this table
+        # Create a node class for this table
         table_dict = {}
+        if pks == ["rowid"]:
+            table_dict["rowid"] = graphene.Int()
         for colname, coltype in columns.items():
             if colname in fks_by_column:
                 fk = fks_by_column[colname]
@@ -39,24 +49,33 @@ async def schema_for_database(datasette, database=None, tables=None):
                 table_dict["resolve_{}".format(colname)] = make_fk_resolver(
                     db, table, table_classes, fk
                 )
-
             else:
                 table_dict[colname] = types[coltype]
 
-        table_class = type(table, (graphene.ObjectType,), table_dict)
-        table_classes[table] = table_class
+        table_node_class = type(table, (graphene.ObjectType,), table_dict)
+        table_classes[table] = table_node_class
+
+        # We also need a table collection class - this is the thing with the
+        # nodes, edges, pageInfo and totalCount fields for that table
+        table_collection_class = make_table_collection_class(
+            table, table_node_class, pks
+        )
         to_add.append(
             (
                 table,
-                graphene.List(
-                    of_type=table_class,
-                    args={"filters": graphene.List(graphene.String)},
-                    required=False,
+                graphene.Field(
+                    table_collection_class,
+                    filters=graphene.List(graphene.String),
+                    first=graphene.Int(),
+                    after=graphene.String(),
                 ),
             )
         )
         to_add.append(
-            ("resolve_{}".format(table), make_all_rows_resolver(db, table, table_class))
+            (
+                "resolve_{}".format(table),
+                make_table_resolver(datasette, db.name, table, table_node_class),
+            )
         )
 
     Query = type(
@@ -70,21 +89,73 @@ async def schema_for_database(datasette, database=None, tables=None):
     )
 
 
-def make_all_rows_resolver(db, table, klass):
-    async def resolve(parent, info, filters=None):
-        where_clause = ""
-        params = {}
+def make_table_collection_class(table, table_class, pks):
+    class _Edge(graphene.ObjectType):
+        cursor = graphene.String()
+        node = graphene.Field(table_class)
+
+        class Meta:
+            name = "{}Edge".format(table)
+
+    class _TableCollection(graphene.ObjectType):
+        totalCount = graphene.Int()
+        pageInfo = graphene.Field(PageInfo)
+        nodes = graphene.List(table_class)
+        edges = graphene.List(_Edge)
+
+        def resolve_totalCount(parent, info):
+            return parent["filtered_table_rows_count"]
+
+        def resolve_nodes(parent, info):
+            return parent["rows"]
+
+        def resolve_edges(parent, info):
+            return [
+                {"cursor": path_from_row_pks(row, pks, use_rowid=not pks), "node": row}
+                for row in parent["rows"]
+            ]
+
+        def resolve_pageInfo(parent, info):
+            return {
+                "endCursor": parent["next"],
+                "hasNextPage": parent["next"] is not None,
+            }
+
+        class Meta:
+            name = "{}Collection".format(table)
+
+    return _TableCollection
+
+
+def make_table_resolver(datasette, database_name, table_name, klass):
+    from datasette.views.table import TableView
+
+    async def resolve_table(root, info, filters=None, first=None, after=None):
+        if first is None:
+            first = 10
+
+        pairs = []
         if filters:
             pairs = [f.split("=", 1) for f in filters]
-            filter_obj = Filters(pairs)
-            where_clause_bits, params = filter_obj.build_where_clauses(table)
-            where_clause = " where " + " and ".join(where_clause_bits)
-        results = await db.execute(
-            "select * from [{}]{}".format(table, where_clause), params
-        )
-        return [klass(**dict(row)) for row in results.rows]
 
-    return resolve
+        qs = {}
+        qs.update(pairs)
+        if after:
+            qs["_next"] = after
+        qs["_size"] = first
+        path_with_query_string = "/{}/{}.json?{}".format(
+            database_name, table_name, urllib.parse.urlencode(qs)
+        )
+        request = Request.fake(path_with_query_string)
+
+        view = TableView(datasette)
+        data, _, _ = await view.data(
+            request, database=database_name, hash=None, table=table_name, _next=after
+        )
+        data["rows"] = [klass(**dict(r)) for r in data["rows"]]
+        return data
+
+    return resolve_table
 
 
 def make_fk_resolver(db, table, table_classes, fk):
@@ -107,3 +178,18 @@ def make_table_getter(table_classes, table):
         return table_classes[table]
 
     return getter
+
+
+def path_from_row_pks(row, pks, use_rowid, quote=True):
+    """ Generate an optionally URL-quoted unique identifier
+        for a row from its primary keys."""
+    if use_rowid:
+        bits = [row.rowid]
+    else:
+        bits = [getattr(row, pk) for pk in pks]
+    if quote:
+        bits = [urllib.parse.quote_plus(str(bit)) for bit in bits]
+    else:
+        bits = [str(bit) for bit in bits]
+
+    return ",".join(bits)

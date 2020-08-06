@@ -44,6 +44,21 @@ def db_path(tmp_path_factory):
         pk="id",
         foreign_keys=("user", "repo"),
     )
+    # To test pagination with both rowid, single-pk and compound-pk tables:
+    db["paginate_by_rowid"].insert_all(
+        [{"name": "Row {}".format(i)} for i in range(1, 22)]
+    )
+    db["paginate_by_pk"].insert_all(
+        [{"pk": i, "name": "Row {}".format(i)} for i in range(1, 22)], pk="pk"
+    )
+    db["paginate_by_compound_pk"].insert_all(
+        [
+            {"pk1": i, "pk2": j, "name": "Row {} {}".format(i, j)}
+            for i in range(1, 4)
+            for j in range(1, 8)
+        ],
+        pk=("pk1", "pk2"),
+    )
     return db_path
 
 
