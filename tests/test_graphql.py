@@ -30,63 +30,73 @@ async def test_graphiql():
         (
             """{
                 users {
-                    name
-                    points
-                    score
+                    nodes {
+                        name
+                        points
+                        score
+                    }
                 }
             }""",
             {
-                "users": [
-                    {"name": "cleopaws", "points": 5, "score": 51.5},
-                    {"name": "simonw", "points": 3, "score": 35.2},
-                ]
+                "users": {
+                    "nodes": [
+                        {"name": "cleopaws", "points": 5, "score": 51.5},
+                        {"name": "simonw", "points": 3, "score": 35.2},
+                    ]
+                }
             },
         ),
         # Nested query
         (
             """{
                 issues {
-                    title
-                    user {
-                        id
-                        name
-                    }
-                    repo {
-                        name
-                        license {
-                            key
-                            name
-                        }
-                        owner {
+                    nodes {
+                        title
+                        user {
                             id
                             name
+                        }
+                        repo {
+                            name
+                            license {
+                                key
+                                name
+                            }
+                            owner {
+                                id
+                                name
+                            }
                         }
                     }
                 }
             }""",
             {
-                "issues": [
-                    {
-                        "title": "Not enough dog stuff",
-                        "user": {"id": 1, "name": "cleopaws"},
-                        "repo": {
-                            "name": "datasette",
-                            "license": {"key": "apache2", "name": "Apache 2"},
-                            "owner": {"id": 2, "name": "simonw"},
-                        },
-                    }
-                ]
+                "issues": {
+                    "nodes": [
+                        {
+                            "title": "Not enough dog stuff",
+                            "user": {"id": 1, "name": "cleopaws"},
+                            "repo": {
+                                "name": "datasette",
+                                "license": {"key": "apache2", "name": "Apache 2"},
+                                "owner": {"id": 2, "name": "simonw"},
+                            },
+                        }
+                    ]
+                }
             },
         ),
         # Filters
         (
             """{
                 users(filters:["score__gt=50"]) {
-                    name
-                    score
+                    nodes {
+                        name
+                        score
+                    }
                 }
             }""",
-            {"users": [{"name": "cleopaws", "score": 51.5}]},
+            {"users": {"nodes": [{"name": "cleopaws", "score": 51.5}]}},
         ),
     ],
 )
@@ -102,9 +112,11 @@ async def test_graphql_variables(ds):
     query = """
     query specific_repo($filter: String) {
         repos(filters:[$filter]) {
-            name
-            license {
-                key
+            nodes {
+                name
+                license {
+                    key
+                }
             }
         }
     }
@@ -116,7 +128,11 @@ async def test_graphql_variables(ds):
         )
         assert response.status_code == 200
         assert response.json() == {
-            "data": {"repos": [{"name": "datasette", "license": {"key": "apache2"}}]}
+            "data": {
+                "repos": {
+                    "nodes": [{"name": "datasette", "license": {"key": "apache2"}}]
+                }
+            }
         }
 
 
@@ -128,8 +144,10 @@ async def test_graphql_error(ds):
             json={
                 "query": """{
                     users {
-                        nam2
-                        score
+                        nodes {
+                            nam2
+                            score
+                        }
                     }
                 }"""
             },
@@ -140,7 +158,7 @@ async def test_graphql_error(ds):
             "errors": [
                 {
                     "message": 'Cannot query field "nam2" on type "users". Did you mean "name"?',
-                    "locations": [{"line": 3, "column": 25}],
+                    "locations": [{"line": 4, "column": 29}],
                 }
             ],
         }
@@ -153,19 +171,23 @@ async def test_graphql_error(ds):
         (
             True,
             {
-                "repos": [
-                    {"id": 1, "fullName": "simonw/datasette"},
-                    {"id": 2, "fullName": "cleopaws/dogspotter"},
-                ]
+                "repos": {
+                    "nodes": [
+                        {"id": 1, "fullName": "simonw/datasette"},
+                        {"id": 2, "fullName": "cleopaws/dogspotter"},
+                    ]
+                }
             },
         ),
         (
             False,
             {
-                "repos": [
-                    {"id": 1, "full_name": "simonw/datasette"},
-                    {"id": 2, "full_name": "cleopaws/dogspotter"},
-                ]
+                "repos": {
+                    "nodes": [
+                        {"id": 1, "full_name": "simonw/datasette"},
+                        {"id": 2, "full_name": "cleopaws/dogspotter"},
+                    ]
+                }
             },
         ),
     ],
@@ -177,8 +199,10 @@ async def test_graphql_auto_camelcase(db_path, on, expected):
     query = """
     {
         repos {
-            id
-            NAME
+            nodes {
+                id
+                NAME
+            }
         }
     }
     """.replace(
@@ -188,3 +212,58 @@ async def test_graphql_auto_camelcase(db_path, on, expected):
         response = await client.post("http://localhost/graphql", json={"query": query})
         assert response.status_code == 200
         assert response.json() == {"data": expected}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "table", ["paginate_by_pk", "paginate_by_rowid", "paginate_by_compound_pk"]
+)
+async def test_graphql_auto_camelcase(ds, table):
+    # Every table should have 21 items, so should paginate 3 times
+    after = None
+    names_from_nodes = []
+    names_from_edges = []
+    while True:
+        args = ["first: 10"]
+        if after:
+            args.append('after: "{}"'.format(after))
+        query = """
+        {
+            TABLE(ARGS) {
+                totalCount
+                pageInfo {
+                    endCursor
+                    hasNextPage
+                }
+                nodes {
+                    name
+                }
+                edges {
+                    node {
+                        name
+                    }
+                }
+            }
+        }
+        """.replace(
+            "TABLE", table
+        ).replace(
+            "ARGS", ", ".join(args)
+        )
+        async with httpx.AsyncClient(app=ds.app()) as client:
+            response = await client.post(
+                "http://localhost/graphql", json={"query": query}
+            )
+            assert response.status_code == 200
+            data = response.json()["data"]
+            names_from_nodes.extend([n["name"] for n in data[table]["nodes"]])
+            names_from_edges.extend([e["node"]["name"] for e in data[table]["edges"]])
+            after = data[table]["pageInfo"]["endCursor"]
+            assert data[table]["pageInfo"]["hasNextPage"] == bool(after)
+            assert data[table]["totalCount"] == 21
+            if not after:
+                break
+    assert len(names_from_nodes) == 21
+    assert len(names_from_edges) == 21
+    assert len(set(names_from_nodes)) == 21
+    assert len(set(names_from_edges)) == 21
