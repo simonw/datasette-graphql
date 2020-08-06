@@ -71,7 +71,23 @@ You can filter the rows returned for a specific table using the `filters:` argum
   }
 }
 ```
+
 This is the same format used for querystring arguments to the Datasette table view, see [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation.
+
+### Sorting
+
+You can set a sort order for results from a table using the `sort:` or `sort_desc:` arguments. The value for this argument should be the name of the column you wish to sort (or sort-descending) by.
+
+```graphql
+{
+  repos(sort_desc: stargazers_count) {
+    nodes {
+      full_name
+      stargazers_count
+    }
+  }
+}
+```
 
 ### Pagination
 

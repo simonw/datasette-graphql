@@ -160,6 +160,46 @@ async def test_graphiql():
                 }
             ],
         ),
+        # sort
+        (
+            """{
+                users(sort: points) {
+                    nodes {
+                        name
+                        points
+                    }
+                }
+            }""",
+            {
+                "users": {
+                    "nodes": [
+                        {"name": "simonw", "points": 3},
+                        {"name": "cleopaws", "points": 5},
+                    ]
+                }
+            },
+            None,
+        ),
+        # sort_desc
+        (
+            """{
+                users(sort_desc: points) {
+                    nodes {
+                        name
+                        points
+                    }
+                }
+            }""",
+            {
+                "users": {
+                    "nodes": [
+                        {"name": "cleopaws", "points": 5},
+                        {"name": "simonw", "points": 3},
+                    ]
+                }
+            },
+            None,
+        ),
     ],
 )
 async def test_graphql_query(ds, query, expected, errors):

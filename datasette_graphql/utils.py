@@ -1,3 +1,4 @@
+from enum import Enum
 from datasette.filters import Filters
 from datasette.utils.asgi import Request
 import graphene
@@ -41,7 +42,9 @@ async def schema_for_database(datasette, database=None, tables=None):
         table_dict = {}
         if pks == ["rowid"]:
             table_dict["rowid"] = graphene.Int()
+        column_names = []
         for colname, coltype in columns.items():
+            column_names.append(colname)
             if colname in fks_by_column:
                 fk = fks_by_column[colname]
                 table_dict[colname] = graphene.Field(
@@ -61,10 +64,13 @@ async def schema_for_database(datasette, database=None, tables=None):
         table_collection_class = make_table_collection_class(
             table, table_node_class, pks
         )
+        sort_enum, sort_desc_enum = make_sort_enums(table, column_names)
         table_collection_kwargs = dict(
             filters=graphene.List(graphene.String),
             first=graphene.Int(),
             after=graphene.String(),
+            sort=graphene.Argument(sort_enum,),
+            sort_desc=graphene.Argument(sort_desc_enum),
         )
         if supports_fts:
             table_collection_kwargs["search"] = graphene.String()
@@ -89,6 +95,14 @@ async def schema_for_database(datasette, database=None, tables=None):
         auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
             "auto_camelcase", False
         ),
+    )
+
+
+def make_sort_enums(table, column_names):
+    options = list(zip(column_names, column_names))
+    return (
+        graphene.Enum.from_enum(Enum("{}Sort".format(table), options)),
+        graphene.Enum.from_enum(Enum("{}SortDesc".format(table), options)),
     )
 
 
@@ -134,7 +148,14 @@ def make_table_resolver(datasette, database_name, table_name, klass, supports_ft
     from datasette.views.table import TableView
 
     async def resolve_table(
-        root, info, filters=None, first=None, after=None, search=None
+        root,
+        info,
+        filters=None,
+        first=None,
+        after=None,
+        search=None,
+        sort=None,
+        sort_desc=None,
     ):
         if first is None:
             first = 10
@@ -151,6 +172,11 @@ def make_table_resolver(datasette, database_name, table_name, klass, supports_ft
 
         if search and supports_fts:
             qs["_search"] = search
+
+        if sort:
+            qs["_sort"] = sort
+        elif sort_desc:
+            qs["_sort_desc"] = sort_desc
 
         path_with_query_string = "/{}/{}.json?{}".format(
             database_name, table_name, urllib.parse.urlencode(qs)
