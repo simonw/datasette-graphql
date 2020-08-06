@@ -21,6 +21,7 @@ async def post_body(request):
 
 
 async def view_graphql(request, datasette):
+    config = datasette.plugin_config("datasette-graphql") or {}
     body = await post_body(request)
     database = request.url_vars.get("database")
 
@@ -28,7 +29,14 @@ async def view_graphql(request, datasette):
         return Response.html(
             await datasette.render_template(
                 "graphiql.html", {"database": database,}, request=request
-            )
+            ),
+            headers={
+                "Access-Control-Allow-Headers": "content-type",
+                "Access-Control-Allow-Method": "POST",
+                "Access-Control-Allow-Origin": "*",
+            }
+            if not config.get("disable_cors")
+            else {},
         )
 
     incoming = json.loads(body)
@@ -48,7 +56,17 @@ async def view_graphql(request, datasette):
     if result.errors:
         response["errors"] = [format_error(error) for error in result.errors]
 
-    return Response.json(response, status=200 if not result.errors else 500)
+    return Response.json(
+        response,
+        status=200 if not result.errors else 500,
+        headers={
+            "Access-Control-Allow-Headers": "content-type",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Allow-Origin": "*",
+        }
+        if not config.get("disable_cors")
+        else {},
+    )
 
 
 @hookimpl
@@ -64,16 +82,12 @@ def startup(datasette):
     # Validate configuration
     config = datasette.plugin_config("datasette-graphql") or {}
     if "databases" in config:
-        if len(config["databases"].keys()) > 1:
-            raise ClickException(
-                "datasette-graphql currently only supports a single database"
-            )
-        database_name = list(config["databases"].keys())[0]
-        try:
-            datasette.get_database(database_name)
-        except KeyError:
-            raise ClickException(
-                "datasette-graphql config error: '{}' is not a connected database".format(
-                    database_name
+        for database_name in config["databases"].keys():
+            try:
+                datasette.get_database(database_name)
+            except KeyError:
+                raise ClickException(
+                    "datasette-graphql config error: '{}' is not a connected database".format(
+                        database_name
+                    )
                 )
-            )

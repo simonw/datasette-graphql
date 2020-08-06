@@ -180,6 +180,26 @@ You can turn on automatic camelCase using the `"auto_camelcase"` plugin configur
 }
 ```
 
+### CORS
+
+By default this plugin adds the following CORS HTTP headers to allow JavaScript running on other domains to access the GraphQL API:
+
+    access-control-allow-headers: content-type
+    access-control-allow-method: POST
+    access-control-allow-origin: *
+
+You can turn these headers off using the `disable_cors` plugin setting:
+
+```json
+{
+    "plugins": {
+        "datasette-graphql": {
+            "disable_cors": true
+        }
+    }
+}
+```
+
 ## Still to come
 
 See [issues](https://github.com/simonw/datasette-graphql/issues) for a full list. Planned improvements include:
