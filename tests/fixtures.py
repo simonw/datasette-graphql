@@ -71,5 +71,14 @@ def db_path(tmp_path_factory):
 
 
 @pytest.fixture(scope="session")
+def db_path2(tmp_path_factory):
+    db_directory = tmp_path_factory.mktemp("dbs")
+    db_path = db_directory / "test2.db"
+    db = sqlite_utils.Database(db_path)
+    db["test"].insert({"body": "This is test two"})
+    return db_path
+
+
+@pytest.fixture(scope="session")
 def ds(db_path):
     return Datasette([db_path])

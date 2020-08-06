@@ -18,6 +18,8 @@ Install this plugin in the same environment as Datasette.
 
 This plugin sets up `/graphql` as a GraphQL endpoint for the first attached database.
 
+If you have multiple attached databases each will get its own endpoint at `/graphql/name_of_database`.
+
 ### Querying for tables and columns
 
 Individual tables (and SQL views) can be queried like this:

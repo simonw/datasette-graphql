@@ -22,16 +22,20 @@ async def post_body(request):
 
 async def view_graphql(request, datasette):
     body = await post_body(request)
+    database = request.url_vars.get("database")
+
     if not body:
         return Response.html(
-            await datasette.render_template("graphiql.html", request=request)
+            await datasette.render_template(
+                "graphiql.html", {"database": database,}, request=request
+            )
         )
 
     incoming = json.loads(body)
     query = incoming["query"]
     variables = incoming.get("variables")
 
-    schema = await schema_for_database(datasette)
+    schema = await schema_for_database(datasette, database=database)
 
     result = await graphql(
         schema,
@@ -50,6 +54,7 @@ async def view_graphql(request, datasette):
 @hookimpl
 def register_routes():
     return [
+        (r"^/graphql/(?P<database>[^/]+)$", view_graphql),
         (r"^/graphql$", view_graphql),
     ]
 

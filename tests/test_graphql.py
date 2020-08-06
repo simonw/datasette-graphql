@@ -1,7 +1,7 @@
 from datasette.app import Datasette
 import pytest
 import httpx
-from .fixtures import ds, db_path
+from .fixtures import ds, db_path, db_path2
 
 
 @pytest.mark.asyncio
@@ -394,3 +394,25 @@ async def test_graphql_auto_camelcase(ds, table):
     assert len(names_from_edges) == 21
     assert len(set(names_from_nodes)) == 21
     assert len(set(names_from_edges)) == 21
+
+
+@pytest.mark.asyncio
+async def test_graphql_multiple_databases(db_path, db_path2):
+    ds = Datasette([db_path, db_path2])
+    query = """
+    {
+        test {
+            nodes {
+                body
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post(
+            "http://localhost/graphql/test2", json={"query": query}
+        )
+        assert response.status_code == 200, response.json()
+        assert response.json() == {
+            "data": {"test": {"nodes": [{"body": "This is test two"}]}}
+        }
