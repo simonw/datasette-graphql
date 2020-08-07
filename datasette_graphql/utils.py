@@ -252,14 +252,17 @@ def make_table_resolver(
 ):
     from datasette.views.table import TableView
 
-    async def resolve_table(root, info, **kwargs):
-        filters = kwargs.get("filters")
-        first = kwargs.get("first")
-        after = kwargs.get("after")
-        search = kwargs.get("search")
-        sort = kwargs.get("sort")
-        sort_desc = kwargs.get("sort_desc")
-
+    async def resolve_table(
+        root,
+        info,
+        filters=None,
+        first=None,
+        after=None,
+        search=None,
+        sort=None,
+        sort_desc=None,
+        **kwargs
+    ):
         if first is None:
             first = 10
 
