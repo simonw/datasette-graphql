@@ -55,13 +55,13 @@ def db_path(tmp_path_factory):
     )
     db["images"].insert({"path": "1x1.gif", "content": GIF_1x1}, pk="path")
     # To test pagination with both rowid, single-pk and compound-pk tables:
-    db["paginate_by_rowid"].insert_all(
+    db["table_with_rowid"].insert_all(
         [{"name": "Row {}".format(i)} for i in range(1, 22)]
     )
-    db["paginate_by_pk"].insert_all(
+    db["table_with_pk"].insert_all(
         [{"pk": i, "name": "Row {}".format(i)} for i in range(1, 22)], pk="pk"
     )
-    db["paginate_by_compound_pk"].insert_all(
+    db["table_with_compound_pk"].insert_all(
         [
             {"pk1": i, "pk2": j, "name": "Row {} {}".format(i, j)}
             for i in range(1, 4)
@@ -69,7 +69,7 @@ def db_path(tmp_path_factory):
         ],
         pk=("pk1", "pk2"),
     )
-    db.create_view("view_on_paginate_by_pk", "select * from paginate_by_pk")
+    db.create_view("view_on_table_with_pk", "select * from table_with_pk")
     return db_path
 
 

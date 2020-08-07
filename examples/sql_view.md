@@ -2,7 +2,7 @@
 
 ```graphql
 {
-    view_on_paginate_by_pk(first: 3) {
+    view_on_table_with_pk(first: 3) {
         nodes {
             pk
             name
@@ -15,7 +15,7 @@ Expected output:
 
 ```json
 {
-    "view_on_paginate_by_pk": {
+    "view_on_table_with_pk": {
         "nodes": [
             {
                 "pk": 1,
