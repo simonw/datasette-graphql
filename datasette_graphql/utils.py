@@ -146,6 +146,36 @@ async def schema_for_database(datasette, database=None, tables=None):
                 ),
             )
         )
+        # *_get field
+        table_get_kwargs = dict(table_collection_kwargs)
+        table_get_kwargs.pop("first")
+        # Add an argument for each primary key
+        for pk in pks:
+            if pk == "rowid" and pk not in columns:
+                pk_column_type = graphene.Int()
+            else:
+                pk_column_type = types[columns[pk]]
+            table_get_kwargs[pk] = pk_column_type
+        to_add.append(
+            (
+                "{}_get".format(table),
+                graphene.Field(table_node_class, **table_get_kwargs),
+            )
+        )
+        to_add.append(
+            (
+                "resolve_{}_get".format(table),
+                make_table_resolver(
+                    datasette,
+                    db.name,
+                    table,
+                    table_classes,
+                    supports_fts,
+                    pk_args=pks,
+                    return_first_row=True,
+                ),
+            )
+        )
 
     Query = type(
         "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
@@ -218,6 +248,8 @@ def make_table_resolver(
     table_classes,
     supports_fts,
     default_where=None,
+    pk_args=None,
+    return_first_row=False,
 ):
     from datasette.views.table import TableView
 
@@ -230,13 +262,22 @@ def make_table_resolver(
         search=None,
         sort=None,
         sort_desc=None,
+        **kwargs
     ):
         if first is None:
             first = 10
 
+        if return_first_row:
+            first = 1
+
         pairs = []
         if filters:
             pairs = [f.split("=", 1) for f in filters]
+
+        if pk_args is not None:
+            for pk in pk_args:
+                if kwargs.get(pk) is not None:
+                    pairs.append([pk, kwargs[pk]])
 
         qs = {}
         qs.update(pairs)
@@ -266,7 +307,13 @@ def make_table_resolver(
         )
         klass = table_classes[table_name]
         data["rows"] = [klass(**dict(r)) for r in data["rows"]]
-        return data
+        if return_first_row:
+            try:
+                return data["rows"][0]
+            except IndexError:
+                return None
+        else:
+            return data
 
     return resolve_table
 
