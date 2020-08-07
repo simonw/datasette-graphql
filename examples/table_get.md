@@ -14,6 +14,9 @@
     pk1
     pk2
   }
+  users_get(id: 12345) {
+    name
+  }
 }
 ```
 
@@ -30,6 +33,7 @@
         "name": "Row 1 3",
         "pk1": 1,
         "pk2": 3
-    }
+    },
+    "users_get": null
 }
 ```
