@@ -78,6 +78,9 @@ async def test_graphql_examples(ds, path):
             json={"query": query, "variables": json.loads(variables),},
         )
         assert response.status_code == 200, response.json()
+        if response.json()["data"] != expected:
+            print("Actual:")
+            print(json.dumps(response.json()["data"], indent=4))
         assert response.json()["data"] == expected
 
 
