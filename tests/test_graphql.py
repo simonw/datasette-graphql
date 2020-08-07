@@ -183,7 +183,7 @@ async def test_graphql_auto_camelcase(db_path, on, expected):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "table", ["paginate_by_pk", "paginate_by_rowid", "paginate_by_compound_pk"]
+    "table", ["table_with_pk", "table_with_rowid", "table_with_compound_pk"]
 )
 async def test_graphql_auto_camelcase(ds, table):
     # Every table should have 21 items, so should paginate 3 times
