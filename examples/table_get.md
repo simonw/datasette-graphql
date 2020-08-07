@@ -1,5 +1,7 @@
 # table_get to retrieve individual rows
 
+Every table in the database automatically gets a field that is the name of the table plus `_get`. This field can be used to directly retrieve individual rows. The primary key columns of the table become field arguments. `rowid` and compound primary key tables are also supported.
+
 ```graphql
 {
   table_with_rowid_get(rowid: 1) {
