@@ -39,3 +39,4 @@ Every table in the database automatically gets a field that is the name of the t
     "users_get": null
 }
 ```
+That last `users_get` result is `null` because the provided ID refers to a record that does not exist.
