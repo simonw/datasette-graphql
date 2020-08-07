@@ -64,21 +64,20 @@ _json_re = re.compile("```json(.*?)```", re.DOTALL)
     "path", (pathlib.Path(__file__).parent.parent / "examples").glob("*.md")
 )
 async def test_graphql_examples(ds, path):
-    print(path)
     content = path.read_text()
     query = _graphql_re.search(content)[1]
     expected = json.loads(_json_re.search(content)[1])
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200
+        assert response.status_code == 200, response.json()
         assert response.json()["data"] == expected
 
 
 @pytest.mark.asyncio
 async def test_graphql_variables(ds):
     query = """
-    query specific_repo($filter: String) {
-        repos(filters:[$filter]) {
+    query specific_repo($name: String) {
+        repos(filters:[{name: {eq: $name}}]) {
             nodes {
                 name
                 license {
@@ -88,12 +87,12 @@ async def test_graphql_variables(ds):
         }
     }
     """
-    variables = {"filter": "name=datasette"}
+    variables = {"name": "datasette"}
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post(
             "http://localhost/graphql", json={"query": query, "variables": variables},
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, response.json()
         assert response.json() == {
             "data": {
                 "repos": {

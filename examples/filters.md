@@ -2,7 +2,7 @@
 
 ```graphql
 {
-    users(filters:["score__gt=50"]) {
+    users(filters:[{score: {gt: 50}}]) {
         nodes {
             name
             score
