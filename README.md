@@ -42,6 +42,22 @@ Individual tables (and SQL views) can be queried like this:
 
 In this example query the underlying database table is called `repos` and its columns include `id`, `full_name` and `description`.
 
+### Fetching a single record
+
+If you only want to fetch a single record - for example if you want to fetch a row by its primary key - you can use the `tablename_get` field:
+
+```graphql
+{
+  repos_get(id: 107914493) {
+    id
+    full_name
+    description
+  }
+}
+```
+
+The `tablename_get` field accepts the primary key column (or columns) as arguments. It also supports the same `filters:`, `search:`, `sort:` and `sort_desc:` arguments as the `tablename` field, described below.
+
 ### Accessing nested objects
 
 If a column is a foreign key to another table, you can request columns from the table pointed to by that foreign key using a nested query like this:
