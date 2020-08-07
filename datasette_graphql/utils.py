@@ -148,6 +148,7 @@ async def schema_for_database(datasette, database=None, tables=None):
         )
         # *_get field
         table_get_kwargs = dict(table_collection_kwargs)
+        table_get_kwargs.pop("first")
         # Add an argument for each primary key
         for pk in pks:
             if pk == "rowid" and pk not in columns:
