@@ -66,6 +66,47 @@
             name
         }
     }
+    users_in: users(filter: {name: {in: ["cleopaws"]}}) {
+        nodes {
+            name
+        }
+    }
+    users_notin: users(filter: {name: {notin: ["cleopaws"]}}) {
+        nodes {
+            name
+        }
+    }
+    repos_arraycontains: repos(filter: {tags: {arraycontains: "dogs"}}) {
+        nodes {
+            full_name
+            tags
+        }
+    }
+    users_date: users(filter: {joined: {date: "2018-11-04"}}) {
+        nodes {
+            name
+        }
+    }
+    users_isnull: users(filter: {dog_award: {isnull: true}}) {
+        nodes {
+            name
+        }
+    }
+    users_notnull: users(filter: {dog_award: {notnull: true}}) {
+        nodes {
+            name
+        }
+    }
+    users_isblank: users(filter: {dog_award: {isblank: true}}) {
+        nodes {
+            name
+        }
+    }
+    users_notblank: users(filter: {dog_award: {notblank: true}}) {
+        nodes {
+            name
+        }
+    }
 }
 ```
 
@@ -155,6 +196,63 @@ Expected output:
         ]
     },
     "users_glob": {
+        "nodes": [
+            {
+                "name": "cleopaws"
+            }
+        ]
+    },
+    "users_in": {
+        "nodes": [
+            {
+                "name": "cleopaws"
+            }
+        ]
+    },
+    "users_notin": {
+        "nodes": [
+            {
+                "name": "simonw"
+            }
+        ]
+    },
+    "repos_arraycontains": {
+        "nodes": [
+            {
+                "full_name": "cleopaws/dogspotter",
+                "tags": "[\"dogs\"]"
+            }
+        ]
+    },
+    "users_date": {
+        "nodes": [
+            {
+                "name": "cleopaws"
+            }
+        ]
+    },
+    "users_isnull": {
+        "nodes": [
+            {
+                "name": "simonw"
+            }
+        ]
+    },
+    "users_notnull": {
+        "nodes": [
+            {
+                "name": "cleopaws"
+            }
+        ]
+    },
+    "users_isblank": {
+        "nodes": [
+            {
+                "name": "simonw"
+            }
+        ]
+    },
+    "users_notblank": {
         "nodes": [
             {
                 "name": "cleopaws"
