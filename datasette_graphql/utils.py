@@ -48,6 +48,7 @@ class PageInfo(graphene.ObjectType):
 
 async def schema_for_database(datasette, database=None, tables=None):
     db = datasette.get_database(database)
+    hidden_tables = await db.hidden_table_names()
 
     # Perform all introspection in a single call to the execute_fn thread
     def introspect_tables(conn):
@@ -126,6 +127,8 @@ async def schema_for_database(datasette, database=None, tables=None):
         table,
         (columns, foreign_keys, fks_back, pks, supports_fts),
     ) in table_metadata.items():
+        if table in hidden_tables:
+            continue
         fks_by_column = {fk.column: fk for fk in foreign_keys}
         # Create a node class for this table
         table_dict = {}

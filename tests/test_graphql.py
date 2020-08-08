@@ -27,6 +27,48 @@ async def test_graphiql():
 
 
 @pytest.mark.asyncio
+async def test_query_fields(ds):
+    query = """
+    {
+        __schema {
+            queryType {
+                fields {
+                    name
+                }
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200
+        fields = {
+            f["name"]
+            for f in response.json()["data"]["__schema"]["queryType"]["fields"]
+        }
+        assert fields == {
+            "images_get",
+            "images",
+            "issues_get",
+            "issues",
+            "licenses_get",
+            "licenses",
+            "repos_get",
+            "repos",
+            "table_with_compound_pk_get",
+            "table_with_compound_pk",
+            "table_with_pk_get",
+            "table_with_pk",
+            "table_with_rowid_get",
+            "table_with_rowid",
+            "users_get",
+            "users",
+            "view_on_table_with_pk_get",
+            "view_on_table_with_pk",
+        }
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "query,expected_errors",
     [
