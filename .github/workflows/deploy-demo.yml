@@ -25,7 +25,10 @@ jobs:
         curl -O https://github-to-sqlite.dogsheep.net/github.db
     - name: Install Python dependencies
       run: |
-        pip install datasette
+        pip install -e .[test]
+    - name: Generate fixtures.db
+      run: |
+        python tests/fixtures.py fixtures.db
     - name: Create Metadata
       run: |
         echo '{
@@ -44,7 +47,7 @@ jobs:
       run: |-
         gcloud config set run/region us-central1
         gcloud config set project datasette-222320
-        datasette publish cloudrun github.db \
+        datasette publish cloudrun github.db fixtures.db \
           -m metadata.json \
           --install=https://github.com/simonw/datasette-graphql/archive/$GITHUB_SHA.zip \
           --service datasette-graphql-demo
