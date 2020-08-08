@@ -1,9 +1,9 @@
 from click import ClickException
 from datasette import hookimpl
-from datasette.utils.asgi import Response
+from datasette.utils.asgi import Response, NotFound
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql.error import format_error
-from graphql import graphql
+from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database
 
@@ -20,11 +20,26 @@ async def post_body(request):
     return body
 
 
+async def view_graphql_schema(request, datasette):
+    database = request.url_vars.get("database")
+    try:
+        datasette.get_database(database)
+    except KeyError:
+        raise NotFound("Database does not exist")
+    schema = await schema_for_database(datasette, database=database)
+    return Response.text(print_schema(schema))
+
+
 async def view_graphql(request, datasette):
     body = await post_body(request)
     database = request.url_vars.get("database")
 
-    if not body:
+    try:
+        datasette.get_database(database)
+    except KeyError:
+        raise NotFound("Database does not exist")
+
+    if not body and "query" not in request.args:
         return Response.html(
             await datasette.render_template(
                 "graphiql.html", {"database": database,}, request=request
@@ -37,12 +52,16 @@ async def view_graphql(request, datasette):
             if datasette.cors
             else {},
         )
+    schema = await schema_for_database(datasette, database=database)
 
-    incoming = json.loads(body)
+    if request.args.get("schema"):
+        return Response.text(print_schema(schema))
+
+    incoming = {}
+    if body:
+        incoming = json.loads(body)
     query = incoming["query"]
     variables = incoming.get("variables")
-
-    schema = await schema_for_database(datasette, database=database)
 
     result = await graphql(
         schema,
@@ -71,6 +90,7 @@ async def view_graphql(request, datasette):
 @hookimpl
 def register_routes():
     return [
+        (r"^/graphql/(?P<database>[^/]+)\.graphql$", view_graphql_schema),
         (r"^/graphql/(?P<database>[^/]+)$", view_graphql),
         (r"^/graphql$", view_graphql),
     ]

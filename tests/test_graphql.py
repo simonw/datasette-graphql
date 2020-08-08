@@ -282,6 +282,26 @@ async def test_graphql_multiple_databases(db_path, db_path2):
 
 
 @pytest.mark.asyncio
+async def test_graphql_output_schema(ds):
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.options("http://localhost/graphql/test.graphql")
+        assert response.status_code == 200
+        for fragment in (
+            "schema {\n  query: Query\n}",
+            "input IntegerOperations {",
+            "users(filter: [usersFilter], where: String, first: Int, after: String, sort: usersSort, sort_desc: usersSortDesc): usersCollection",
+            "users_get(id: Int, filter: [usersFilter], where: String, after: String, sort: usersSort, sort_desc: usersSortDesc): users",
+            "type images {",
+            "type imagesCollection {",
+            "type imagesEdge {",
+            "input imagesFilter {",
+            "enum imagesSort {",
+            "enum imagesSortDesc {",
+        ):
+            assert fragment in response.text
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("cors_enabled", [True, False])
 async def test_cors_headers(db_path, cors_enabled):
     ds = Datasette([db_path], cors=cors_enabled,)

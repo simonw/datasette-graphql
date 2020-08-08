@@ -4,7 +4,7 @@
 [![Changelog](https://img.shields.io/github/v/release/simonw/datasette-graphql?include_prereleases&label=changelog)](https://github.com/simonw/datasette-graphql/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/simonw/datasette-graphql/blob/master/LICENSE)
 
-A GraphQL endpoint for Datasette
+**Datasette plugin providing an automatic GraphQL API for your SQLite databases**
 
 Read more about this project: [GraphQL in Datasette with the new datasette-graphql plugin](https://simonwillison.net/2020/Aug/7/datasette-graphql/)
 
@@ -23,6 +23,8 @@ Install this plugin in the same environment as Datasette.
 This plugin sets up `/graphql` as a GraphQL endpoint for the first attached database.
 
 If you have multiple attached databases each will get its own endpoint at `/graphql/name_of_database`.
+
+The automatically generated GraphQL schema is available at `/graphql/name_of_database.graphql` - here's [an example](https://datasette-graphql-demo.datasette.io/graphql/github.graphql).
 
 ### Querying for tables and columns
 

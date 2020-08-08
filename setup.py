@@ -14,7 +14,7 @@ def get_long_description():
 
 setup(
     name="datasette-graphql",
-    description="A GraphQL endpoint for Datasette",
+    description="Datasette plugin providing an automatic GraphQL API for your SQLite databases",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     author="Simon Willison",
