@@ -39,7 +39,7 @@ async def view_graphql(request, datasette):
     except KeyError:
         raise NotFound("Database does not exist")
 
-    if not body and "query" not in request.args:
+    if not body:
         return Response.html(
             await datasette.render_template(
                 "graphiql.html", {"database": database,}, request=request
