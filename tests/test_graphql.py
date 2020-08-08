@@ -55,8 +55,9 @@ async def test_graphql_errors(ds, query, expected_errors):
         assert response.json()["errors"] == expected_errors
 
 
-_graphql_re = re.compile("```graphql(.*?)```", re.DOTALL)
-_json_re = re.compile("```json(.*?)```", re.DOTALL)
+_graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
+_json_re = re.compile(r"```json\n(.*?)```", re.DOTALL)
+_variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
 
 
 @pytest.mark.asyncio
@@ -64,43 +65,23 @@ _json_re = re.compile("```json(.*?)```", re.DOTALL)
     "path", (pathlib.Path(__file__).parent.parent / "examples").glob("*.md")
 )
 async def test_graphql_examples(ds, path):
-    print(path)
     content = path.read_text()
     query = _graphql_re.search(content)[1]
+    try:
+        variables = _variables_re.search(content)[1]
+    except TypeError:
+        variables = "{}"
     expected = json.loads(_json_re.search(content)[1])
     async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200
-        assert response.json()["data"] == expected
-
-
-@pytest.mark.asyncio
-async def test_graphql_variables(ds):
-    query = """
-    query specific_repo($filter: String) {
-        repos(filters:[$filter]) {
-            nodes {
-                name
-                license {
-                    key
-                }
-            }
-        }
-    }
-    """
-    variables = {"filter": "name=datasette"}
-    async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post(
-            "http://localhost/graphql", json={"query": query, "variables": variables},
+            "http://localhost/graphql",
+            json={"query": query, "variables": json.loads(variables),},
         )
-        assert response.status_code == 200
-        assert response.json() == {
-            "data": {
-                "repos": {
-                    "nodes": [{"name": "datasette", "license": {"key": "apache2"}}]
-                }
-            }
-        }
+        assert response.status_code == 200, response.json()
+        if response.json()["data"] != expected:
+            print("Actual:")
+            print(json.dumps(response.json()["data"], indent=4))
+        assert response.json()["data"] == expected
 
 
 @pytest.mark.asyncio

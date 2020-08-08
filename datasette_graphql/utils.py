@@ -1,6 +1,5 @@
 from base64 import b64decode, b64encode
 from enum import Enum
-from datasette.filters import Filters
 from datasette.utils.asgi import Request
 import graphene
 import urllib
@@ -123,8 +122,9 @@ async def schema_for_database(datasette, database=None, tables=None):
             table, table_node_class, pks
         )
         sort_enum, sort_desc_enum = make_sort_enums(table, column_names)
+        filter_class = make_table_filter_class(table, columns)
         table_collection_kwargs = dict(
-            filters=graphene.List(graphene.String),
+            filter=graphene.List(filter_class),
             first=graphene.Int(),
             after=graphene.String(),
             sort=graphene.Argument(sort_enum,),
@@ -234,6 +234,63 @@ def make_table_collection_class(table, table_class, pks):
     return _TableCollection
 
 
+class StringOperations(graphene.InputObjectType):
+    exact = graphene.String(name="eq")
+    not_ = graphene.String(name="not")
+    contains = graphene.String()
+    endswith = graphene.String()
+    startswith = graphene.String()
+    gt = graphene.String()
+    gte = graphene.String()
+    lt = graphene.String()
+    lte = graphene.String()
+    like = graphene.String()
+    notlike = graphene.String()
+    glob = graphene.String()
+    in_ = graphene.List(graphene.String, name="in")
+    notin = graphene.List(graphene.String)
+    arraycontains = graphene.String()
+    date = graphene.String()
+    isnull = graphene.Boolean()
+    notnull = graphene.Boolean()
+    isblank = graphene.Boolean()
+    notblank = graphene.Boolean()
+
+
+class IntegerOperations(graphene.InputObjectType):
+    exact = graphene.Int(name="eq")
+    not_ = graphene.Int(name="not")
+    gt = graphene.Int()
+    gte = graphene.Int()
+    lt = graphene.Int()
+    lte = graphene.Int()
+    in_ = graphene.List(graphene.Int, name="in")
+    notin = graphene.List(graphene.Int)
+    arraycontains = graphene.Int()
+    isnull = graphene.Boolean()
+    notnull = graphene.Boolean()
+    isblank = graphene.Boolean()
+    notblank = graphene.Boolean()
+
+
+types_to_operations = {
+    str: StringOperations,
+    int: IntegerOperations,
+    float: IntegerOperations,
+}
+
+
+def make_table_filter_class(table, columns):
+    return type(
+        "{}Filter".format(table),
+        (graphene.InputObjectType,),
+        {
+            column: (types_to_operations.get(column_type) or StringOperations)()
+            for column, column_type in columns.items()
+        },
+    )
+
+
 class DatasetteSpecialConfig(wrapt.ObjectProxy):
     def config(self, key):
         if key == "suggest_facets":
@@ -256,7 +313,7 @@ def make_table_resolver(
     async def resolve_table(
         root,
         info,
-        filters=None,
+        filter=None,
         first=None,
         after=None,
         search=None,
@@ -271,8 +328,17 @@ def make_table_resolver(
             first = 1
 
         pairs = []
-        if filters:
-            pairs = [f.split("=", 1) for f in filters]
+        for filter_ in filter or []:
+            for column_name, operations in filter_.items():
+                for operation_name, value in operations.items():
+                    if isinstance(value, list):
+                        value = ",".join(value)
+                    pairs.append(
+                        [
+                            "{}__{}".format(column_name, operation_name.rstrip("_")),
+                            value,
+                        ]
+                    )
 
         if pk_args is not None:
             for pk in pk_args:

@@ -12,8 +12,22 @@ def db_path(tmp_path_factory):
     db = sqlite_utils.Database(db_path)
     db["users"].insert_all(
         [
-            {"id": 1, "name": "cleopaws", "points": 5, "score": 51.5},
-            {"id": 2, "name": "simonw", "points": 3, "score": 35.2},
+            {
+                "id": 1,
+                "name": "cleopaws",
+                "points": 5,
+                "score": 51.5,
+                "joined": "2018-11-04 00:05:23",
+                "dog_award": "3rd best mutt"
+            },
+            {
+                "id": 2,
+                "name": "simonw",
+                "points": 3,
+                "score": 35.2,
+                "joined": "2019-04-03 12:35:11",
+                "dog_award": None
+            },
         ],
         pk="id",
     )
@@ -29,6 +43,7 @@ def db_path(tmp_path_factory):
                 "name": "datasette",
                 "owner": 2,
                 "license": "apache2",
+                "tags": ["databases", "apis"],
             },
             {
                 "id": 2,
@@ -36,6 +51,7 @@ def db_path(tmp_path_factory):
                 "name": "dogspotter",
                 "owner": 1,
                 "license": "mit",
+                "tags": ["dogs"],
             },
             {
                 "id": 3,
@@ -43,6 +59,7 @@ def db_path(tmp_path_factory):
                 "name": "private",
                 "owner": 2,
                 "license": None,
+                "tags": [],
             },
         ],
         pk="id",
