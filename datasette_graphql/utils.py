@@ -1,10 +1,15 @@
 from base64 import b64decode, b64encode
+from collections import namedtuple
 from enum import Enum
 from datasette.utils.asgi import Request
 import graphene
 import urllib
 import sqlite_utils
 import wrapt
+
+TableMetadata = namedtuple(
+    "TableMetadata", ("columns", "foreign_keys", "fks_back", "pks", "supports_fts")
+)
 
 
 class Bytes(graphene.Scalar):
@@ -44,16 +49,16 @@ class PageInfo(graphene.ObjectType):
 async def schema_for_database(datasette, database=None, tables=None):
     db = datasette.get_database(database)
 
-    # For each table, expose a graphene.List
-    to_add = []
-    table_classes = {}
-    table_collection_classes = {}
-    table_names = await db.table_names()
-    view_names = await db.view_names()
-    for table in table_names + view_names:
-        # Perform all introspection in a single call to the execute_fn thread
-        def introspect_table(conn):
-            db = sqlite_utils.Database(conn)
+    # Perform all introspection in a single call to the execute_fn thread
+    def introspect_tables(conn):
+        db = sqlite_utils.Database(conn)
+
+        table_names = db.table_names()
+        view_names = db.view_names()
+
+        table_metadata = {}
+
+        for table in table_names + view_names:
             columns = db[table].columns_dict
             foreign_keys = []
             pks = []
@@ -69,13 +74,35 @@ async def schema_for_database(datasette, database=None, tables=None):
                 for t in db.tables:
                     collected.extend(t.foreign_keys)
                 fks_back = [f for f in collected if f.other_table == table]
-            return columns, foreign_keys, fks_back, pks, supports_fts
+            table_metadata[table] = TableMetadata(
+                columns, foreign_keys, fks_back, pks, supports_fts
+            )
 
-        columns, foreign_keys, fks_back, pks, supports_fts = await db.execute_fn(
-            introspect_table
-        )
+        return table_metadata
+
+    table_metadata = await db.execute_fn(introspect_tables)
+
+    # Construct the tableFilter classes
+    table_filters = {
+        table: make_table_filter_class(table, meta.columns)
+        for table, meta in table_metadata.items()
+    }
+    # And the sort enums
+    sort_enums = {
+        table: make_sort_enums(table, meta.columns)
+        for table, meta in table_metadata.items()
+    }
+
+    # For each table, expose a graphene.List
+    to_add = []
+    table_classes = {}
+    table_collection_classes = {}
+
+    for (
+        table,
+        (columns, foreign_keys, fks_back, pks, supports_fts),
+    ) in table_metadata.items():
         fks_by_column = {fk.column: fk for fk in foreign_keys}
-
         # Create a node class for this table
         table_dict = {}
         if pks == ["rowid"]:
@@ -96,10 +123,16 @@ async def schema_for_database(datasette, database=None, tables=None):
 
         # Now add the backwards foreign key fields for related items
         for fk in fks_back:
+            fk_table_columns = table_metadata[fk.table].columns
+            sort_enum, sort_desc_enum = sort_enums[fk.table]
+            filter_class = table_filters[fk.table]
             table_dict["{}_list".format(fk.table)] = graphene.Field(
                 make_table_collection_getter(table_collection_classes, fk.table),
+                filter=graphene.List(filter_class),
                 first=graphene.Int(),
                 after=graphene.String(),
+                sort=graphene.Argument(sort_enum),
+                sort_desc=graphene.Argument(sort_desc_enum),
             )
             table_dict["resolve_{}_list".format(fk.table)] = make_table_resolver(
                 datasette,
@@ -121,10 +154,9 @@ async def schema_for_database(datasette, database=None, tables=None):
         table_collection_class = make_table_collection_class(
             table, table_node_class, pks
         )
-        sort_enum, sort_desc_enum = make_sort_enums(table, column_names)
-        filter_class = make_table_filter_class(table, columns)
+        sort_enum, sort_desc_enum = sort_enums[table]
         table_collection_kwargs = dict(
-            filter=graphene.List(filter_class),
+            filter=graphene.List(table_filters[table]),
             first=graphene.Int(),
             after=graphene.String(),
             sort=graphene.Argument(sort_enum,),

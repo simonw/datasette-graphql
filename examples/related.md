@@ -21,6 +21,21 @@
             }
         }
     }
+    users_with_dogspotter: users {
+        nodes {
+            name
+            repos_list(filter: {name: {eq: "dogspotter"}}, sort: id) {
+                totalCount
+                pageInfo {
+                    endCursor
+                    hasNextPage
+                }
+                nodes {
+                    name
+                }
+            }
+        }
+    }
 }
 ```
 
@@ -66,6 +81,36 @@ Expected output:
                             }
                         }
                     ]
+                }
+            }
+        ]
+    },
+    "users_with_dogspotter": {
+        "nodes": [
+            {
+                "name": "cleopaws",
+                "repos_list": {
+                    "totalCount": 1,
+                    "pageInfo": {
+                        "endCursor": null,
+                        "hasNextPage": false
+                    },
+                    "nodes": [
+                        {
+                            "name": "dogspotter"
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "simonw",
+                "repos_list": {
+                    "totalCount": 0,
+                    "pageInfo": {
+                        "endCursor": null,
+                        "hasNextPage": false
+                    },
+                    "nodes": []
                 }
             }
         ]

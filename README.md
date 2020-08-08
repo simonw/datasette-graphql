@@ -119,6 +119,22 @@ You can filter the rows returned for a specific table using the `filter:` argume
 
 See [table filters examples](https://github.com/simonw/datasette-graphql/blob/main/examples/filters.md) for more operations, and [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation for details of how those operations work.
 
+These same filters can be used on nested relationships, like so:
+
+```graphql
+{
+  users_get(id: 9599) {
+    name
+    repos_list(filter: {name: {startswith: "datasette-"}}) {
+      totalCount
+      nodes {
+        full_name
+      }
+    }
+  }
+}
+```
+
 ### Sorting
 
 You can set a sort order for results from a table using the `sort:` or `sort_desc:` arguments. The value for this argument should be the name of the column you wish to sort (or sort-descending) by.
