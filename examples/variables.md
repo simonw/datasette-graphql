@@ -4,7 +4,7 @@
 
 ```graphql
 query specific_repo($name: String) {
-    repos(filters:[{name: {eq: $name}}]) {
+    repos(filter: {name: {eq: $name}}) {
         nodes {
             name
             license {

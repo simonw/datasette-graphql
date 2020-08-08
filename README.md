@@ -56,7 +56,7 @@ If you only want to fetch a single record - for example if you want to fetch a r
 }
 ```
 
-The `tablename_get` field accepts the primary key column (or columns) as arguments. It also supports the same `filters:`, `search:`, `sort:` and `sort_desc:` arguments as the `tablename` field, described below.
+The `tablename_get` field accepts the primary key column (or columns) as arguments. It also supports the same `filter:`, `search:`, `sort:` and `sort_desc:` arguments as the `tablename` field, described below.
 
 ### Accessing nested objects
 
@@ -101,11 +101,11 @@ Consider a `users` table which is related to `repos` - a repo has a foreign key 
 
 ### Filtering tables
 
-You can filter the rows returned for a specific table using the `filters:` argument. This accepts a list of filters, where a filter is a string of the form `column=value` or `column__op=value`. For example, to return just repositories with the Apache 2 license and more than 10 stars:
+You can filter the rows returned for a specific table using the `filter:` argument. This accepts a filter object mapping columns to operations. For example, to return just repositories with the Apache 2 license and more than 10 stars:
 
 ```graphql
 {
-  repos(filters: ["license=apache-2.0", "stargazers_count__gt=10"]) {
+  repos(filter: {license: {eq: "apache-2.0"}, stargazers_count: {gt: 10}}) {
     nodes {
       full_name
       stargazers_count
@@ -117,7 +117,7 @@ You can filter the rows returned for a specific table using the `filters:` argum
 }
 ```
 
-This is the same format used for querystring arguments to the Datasette table view, see [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation.
+See [table filters examples](https://github.com/simonw/datasette-graphql/blob/main/examples/filters.md) for more operations, and [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation for details of how those operations work.
 
 ### Sorting
 

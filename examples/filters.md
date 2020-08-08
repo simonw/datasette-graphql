@@ -2,66 +2,66 @@
 
 ```graphql
 {
-    users_eq: users(filters:[{name: {eq: "cleopaws"}}]) {
+    users_eq: users(filter: {name: {eq: "cleopaws"}}) {
         nodes {
             name
         }
     }
-    users_not: users(filters:[{name: {not: "cleopaws"}}]) {
+    users_not: users(filter: {name: {not: "cleopaws"}}) {
         nodes {
             name
         }
     }
-    users_contains: users(filters:[{name: {contains: "leo"}}]) {
+    users_contains: users(filter: {name: {contains: "leo"}}) {
         nodes {
             name
         }
     }
-    users_endswith: users(filters:[{name: {endswith: "paws"}}]) {
+    users_endswith: users(filter: {name: {endswith: "paws"}}) {
         nodes {
             name
         }
     }
-    users_startswith: users(filters:[{name: {startswith: "si"}}]) {
+    users_startswith: users(filter: {name: {startswith: "si"}}) {
         nodes {
             name
         }
     }
-    users_gt: users(filters:[{score: {gt: 50}}]) {
-        nodes {
-            name
-            score
-        }
-    }
-    users_gte: users(filters:[{score: {gte: 50}}]) {
+    users_gt: users(filter: {score: {gt: 50}}) {
         nodes {
             name
             score
         }
     }
-    users_lt: users(filters:[{score: {lt: 50}}]) {
+    users_gte: users(filter: {score: {gte: 50}}) {
         nodes {
             name
             score
         }
     }
-    users_lte: users(filters:[{score: {lte: 50}}]) {
+    users_lt: users(filter: {score: {lt: 50}}) {
         nodes {
             name
             score
         }
     }
-    users_like: users(filters:[{name: {like: "cl%"}}]) {
+    users_lte: users(filter: {score: {lte: 50}}) {
+        nodes {
+            name
+            score
+        }
+    }
+    users_like: users(filter: {name: {like: "cl%"}}) {
         nodes {
             name
         }
     }
-    users_notlike: users(filters:[{name: {notlike: "cl%"}}]) {
+    users_notlike: users(filter: {name: {notlike: "cl%"}}) {
         nodes {
             name
         }
     }
-    users_glob: users(filters:[{name: {glob: "cl*"}}]) {
+    users_glob: users(filter: {name: {glob: "cl*"}}) {
         nodes {
             name
         }

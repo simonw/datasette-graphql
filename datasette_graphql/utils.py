@@ -1,6 +1,5 @@
 from base64 import b64decode, b64encode
 from enum import Enum
-from datasette.filters import Filters
 from datasette.utils.asgi import Request
 import graphene
 import urllib
@@ -125,7 +124,7 @@ async def schema_for_database(datasette, database=None, tables=None):
         sort_enum, sort_desc_enum = make_sort_enums(table, column_names)
         filter_class = make_table_filter_class(table, columns)
         table_collection_kwargs = dict(
-            filters=graphene.List(filter_class),
+            filter=graphene.List(filter_class),
             first=graphene.Int(),
             after=graphene.String(),
             sort=graphene.Argument(sort_enum,),
@@ -314,7 +313,7 @@ def make_table_resolver(
     async def resolve_table(
         root,
         info,
-        filters=None,
+        filter=None,
         first=None,
         after=None,
         search=None,
@@ -329,7 +328,7 @@ def make_table_resolver(
             first = 1
 
         pairs = []
-        for filter_ in filters or []:
+        for filter_ in filter or []:
             for column_name, operations in filter_.items():
                 for operation_name, value in operations.items():
                     if isinstance(value, list):
