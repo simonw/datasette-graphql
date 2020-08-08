@@ -5,11 +5,7 @@ import sqlite_utils
 GIF_1x1 = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;"
 
 
-@pytest.fixture(scope="session")
-def db_path(tmp_path_factory):
-    db_directory = tmp_path_factory.mktemp("dbs")
-    db_path = db_directory / "test.db"
-    db = sqlite_utils.Database(db_path)
+def build_database(db):
     db["users"].insert_all(
         [
             {
@@ -87,6 +83,14 @@ def db_path(tmp_path_factory):
         pk=("pk1", "pk2"),
     )
     db.create_view("view_on_table_with_pk", "select * from table_with_pk")
+
+
+@pytest.fixture(scope="session")
+def db_path(tmp_path_factory):
+    db_directory = tmp_path_factory.mktemp("dbs")
+    db_path = db_directory / "test.db"
+    db = sqlite_utils.Database(db_path)
+    build_database(db)
     return db_path
 
 
@@ -102,3 +106,15 @@ def db_path2(tmp_path_factory):
 @pytest.fixture(scope="session")
 def ds(db_path):
     return Datasette([db_path])
+
+
+if __name__ == "__main__":
+    import sys
+
+    if not sys.argv[-1].endswith(".db"):
+        print("Usage: python fixtures.py fixtures.db")
+        sys.exit(1)
+
+    db = sqlite_utils.Database(sys.argv[-1])
+    build_database(db)
+    print("Data written to {}".format(sys.argv[-1]))
