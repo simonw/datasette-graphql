@@ -135,6 +135,19 @@ These same filters can be used on nested relationships, like so:
 }
 ```
 
+The `where:` argument can be used as an alternative to `filter:` when the thing you are expressing is too complex to be modeled using a filter expression. It accepts a string fragment of SQL that will be included in the `WHERE` clause of the SQL query.
+
+```graphql
+{
+  repos(where: "name='sqlite-utils' or name like 'datasette-%'") {
+    totalCount
+    nodes {
+      full_name
+    }
+  }
+}
+```
+
 ### Sorting
 
 You can set a sort order for results from a table using the `sort:` or `sort_desc:` arguments. The value for this argument should be the name of the column you wish to sort (or sort-descending) by.

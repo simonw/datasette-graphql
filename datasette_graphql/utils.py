@@ -87,11 +87,35 @@ async def schema_for_database(datasette, database=None, tables=None):
         table: make_table_filter_class(table, meta.columns)
         for table, meta in table_metadata.items()
     }
-    # And the sort enums
-    sort_enums = {
-        table: make_sort_enums(table, meta.columns)
-        for table, meta in table_metadata.items()
-    }
+    # And the table_collection_kwargs
+    table_collection_kwargs = {}
+    for table, meta in table_metadata.items():
+        column_names = meta.columns.keys()
+        options = list(zip(column_names, column_names))
+        sort_enum = graphene.Enum.from_enum(Enum("{}Sort".format(table), options))
+        sort_desc_enum = graphene.Enum.from_enum(
+            Enum("{}SortDesc".format(table), options)
+        )
+        kwargs = dict(
+            filter=graphene.List(
+                table_filters[table],
+                description='Filters e.g. {name: {eq: "datasette"}}',
+            ),
+            where=graphene.String(
+                description="Extra SQL where clauses, e.g. \"name='datasette'\""
+            ),
+            first=graphene.Int(description="Number of results to return"),
+            after=graphene.String(
+                description="Start at this pagination cursor (from tableInfo { endCursor })"
+            ),
+            sort=graphene.Argument(sort_enum, description="Sort by this column"),
+            sort_desc=graphene.Argument(
+                sort_desc_enum, description="Sort by this column descending"
+            ),
+        )
+        if meta.supports_fts:
+            kwargs["search"] = graphene.String(description="Search for this term")
+        table_collection_kwargs[table] = kwargs
 
     # For each table, expose a graphene.List
     to_add = []
@@ -123,23 +147,19 @@ async def schema_for_database(datasette, database=None, tables=None):
 
         # Now add the backwards foreign key fields for related items
         for fk in fks_back:
-            fk_table_columns = table_metadata[fk.table].columns
-            sort_enum, sort_desc_enum = sort_enums[fk.table]
+            meta = table_metadata[fk.table]
+            fk_table_columns = meta.columns
             filter_class = table_filters[fk.table]
             table_dict["{}_list".format(fk.table)] = graphene.Field(
                 make_table_collection_getter(table_collection_classes, fk.table),
-                filter=graphene.List(filter_class),
-                first=graphene.Int(),
-                after=graphene.String(),
-                sort=graphene.Argument(sort_enum),
-                sort_desc=graphene.Argument(sort_desc_enum),
+                **table_collection_kwargs[fk.table]
             )
             table_dict["resolve_{}_list".format(fk.table)] = make_table_resolver(
                 datasette,
                 db.name,
                 fk.table,
                 table_classes,
-                supports_fts,
+                meta.supports_fts,
                 default_where="[{}] = ".format(fk.column)
                 + "{root."
                 + fk.other_column
@@ -154,21 +174,14 @@ async def schema_for_database(datasette, database=None, tables=None):
         table_collection_class = make_table_collection_class(
             table, table_node_class, pks
         )
-        sort_enum, sort_desc_enum = sort_enums[table]
-        table_collection_kwargs = dict(
-            filter=graphene.List(table_filters[table]),
-            first=graphene.Int(),
-            after=graphene.String(),
-            sort=graphene.Argument(sort_enum,),
-            sort_desc=graphene.Argument(sort_desc_enum),
-        )
-        if supports_fts:
-            table_collection_kwargs["search"] = graphene.String()
-
         table_collection_classes[table] = table_collection_class
-
         to_add.append(
-            (table, graphene.Field(table_collection_class, **table_collection_kwargs))
+            (
+                table,
+                graphene.Field(
+                    table_collection_class, **table_collection_kwargs[table]
+                ),
+            )
         )
         to_add.append(
             (
@@ -179,7 +192,7 @@ async def schema_for_database(datasette, database=None, tables=None):
             )
         )
         # *_get field
-        table_get_kwargs = dict(table_collection_kwargs)
+        table_get_kwargs = dict(table_collection_kwargs[table])
         table_get_kwargs.pop("first")
         # Add an argument for each primary key
         for pk in pks:
@@ -217,14 +230,6 @@ async def schema_for_database(datasette, database=None, tables=None):
         auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
             "auto_camelcase", False
         ),
-    )
-
-
-def make_sort_enums(table, column_names):
-    options = list(zip(column_names, column_names))
-    return (
-        graphene.Enum.from_enum(Enum("{}Sort".format(table), options)),
-        graphene.Enum.from_enum(Enum("{}SortDesc".format(table), options)),
     )
 
 
@@ -346,6 +351,7 @@ def make_table_resolver(
         root,
         info,
         filter=None,
+        where=None,
         first=None,
         after=None,
         search=None,
@@ -385,6 +391,9 @@ def make_table_resolver(
 
         if search and supports_fts:
             qs["_search"] = search
+
+        if where:
+            qs["_where"] = where
 
         if sort:
             qs["_sort"] = sort
