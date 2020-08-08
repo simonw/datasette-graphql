@@ -18,7 +18,7 @@ def db_path(tmp_path_factory):
                 "points": 5,
                 "score": 51.5,
                 "joined": "2018-11-04 00:05:23",
-                "dog_award": "3rd best mutt"
+                "dog_award": "3rd best mutt",
             },
             {
                 "id": 2,
@@ -26,7 +26,7 @@ def db_path(tmp_path_factory):
                 "points": 3,
                 "score": 35.2,
                 "joined": "2019-04-03 12:35:11",
-                "dog_award": None
+                "dog_award": None,
             },
         ],
         pk="id",
