@@ -79,9 +79,9 @@ async def schema_for_database(datasette, database=None, tables=None):
                 columns, foreign_keys, fks_back, pks, supports_fts
             )
 
-        return table_metadata
+        return table_metadata, view_names
 
-    table_metadata = await db.execute_fn(introspect_tables)
+    table_metadata, view_names = await db.execute_fn(introspect_tables)
 
     # Construct the tableFilter classes
     table_filters = {
@@ -185,7 +185,9 @@ async def schema_for_database(datasette, database=None, tables=None):
                 graphene.Field(
                     table_collection_class,
                     **table_collection_kwargs[table],
-                    description="Rows from the {} table".format(table)
+                    description="Rows from the {} {}".format(
+                        table, "view" if table in view_names else "table"
+                    )
                 ),
             )
         )
@@ -213,7 +215,9 @@ async def schema_for_database(datasette, database=None, tables=None):
                 graphene.Field(
                     table_node_class,
                     **table_row_kwargs,
-                    description="Single row from the {} table".format(table)
+                    description="Single row from the {} {}".format(
+                        table, "view" if table in view_names else "table"
+                    )
                 ),
             )
         )
