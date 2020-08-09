@@ -7,7 +7,7 @@
             full_name
         }
     }
-    users_get(id: 1) {
+    users_row(id: 1) {
         name
             repos_list(search:"dogspotter") {
                 nodes {
@@ -17,7 +17,7 @@
     }
 }
 ```
-[Try this query](https://datasette-graphql-demo.datasette.io/graphql/fixtures?query=%0A%7B%0A%20%20%20%20repos%28search%3A%20%22cleopaws%22%29%20%7B%0A%20%20%20%20%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%20%20users_get%28id%3A%201%29%20%7B%0A%20%20%20%20%20%20%20%20name%0A%20%20%20%20%20%20%20%20%20%20%20%20repos_list%28search%3A%22dogspotter%22%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%7D%0A)
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql/fixtures?query=%0A%7B%0A%20%20%20%20repos%28search%3A%20%22cleopaws%22%29%20%7B%0A%20%20%20%20%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%20%20users_row%28id%3A%201%29%20%7B%0A%20%20%20%20%20%20%20%20name%0A%20%20%20%20%20%20%20%20%20%20%20%20repos_list%28search%3A%22dogspotter%22%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%7D%0A)
 
 Expected output:
 
@@ -30,7 +30,7 @@ Expected output:
             }
         ]
     },
-    "users_get": {
+    "users_row": {
         "name": "cleopaws",
         "repos_list": {
             "nodes": [

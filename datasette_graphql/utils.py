@@ -194,25 +194,25 @@ async def schema_for_database(datasette, database=None, tables=None):
                 ),
             )
         )
-        # *_get field
-        table_get_kwargs = dict(table_collection_kwargs[table])
-        table_get_kwargs.pop("first")
+        # *_row field
+        table_row_kwargs = dict(table_collection_kwargs[table])
+        table_row_kwargs.pop("first")
         # Add an argument for each primary key
         for pk in pks:
             if pk == "rowid" and pk not in columns:
                 pk_column_type = graphene.Int()
             else:
                 pk_column_type = types[columns[pk]]
-            table_get_kwargs[pk] = pk_column_type
+            table_row_kwargs[pk] = pk_column_type
         to_add.append(
             (
-                "{}_get".format(table),
-                graphene.Field(table_node_class, **table_get_kwargs),
+                "{}_row".format(table),
+                graphene.Field(table_node_class, **table_row_kwargs),
             )
         )
         to_add.append(
             (
-                "resolve_{}_get".format(table),
+                "resolve_{}_row".format(table),
                 make_table_resolver(
                     datasette,
                     db.name,

@@ -46,11 +46,11 @@ In this example query the underlying database table is called `repos` and its co
 
 ### Fetching a single record
 
-If you only want to fetch a single record - for example if you want to fetch a row by its primary key - you can use the `tablename_get` field:
+If you only want to fetch a single record - for example if you want to fetch a row by its primary key - you can use the `tablename_row` field:
 
 ```graphql
 {
-  repos_get(id: 107914493) {
+  repos_row(id: 107914493) {
     id
     full_name
     description
@@ -58,7 +58,7 @@ If you only want to fetch a single record - for example if you want to fetch a r
 }
 ```
 
-The `tablename_get` field accepts the primary key column (or columns) as arguments. It also supports the same `filter:`, `search:`, `sort:` and `sort_desc:` arguments as the `tablename` field, described below.
+The `tablename_row` field accepts the primary key column (or columns) as arguments. It also supports the same `filter:`, `search:`, `sort:` and `sort_desc:` arguments as the `tablename` field, described below.
 
 ### Accessing nested objects
 
@@ -125,7 +125,7 @@ These same filters can be used on nested relationships, like so:
 
 ```graphql
 {
-  users_get(id: 9599) {
+  users_row(id: 9599) {
     name
     repos_list(filter: {name: {startswith: "datasette-"}}) {
       totalCount
