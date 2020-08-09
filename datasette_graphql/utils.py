@@ -155,7 +155,8 @@ async def schema_for_database(datasette, database=None, tables=None):
             filter_class = table_filters[fk.table]
             table_dict["{}_list".format(fk.table)] = graphene.Field(
                 make_table_collection_getter(table_collection_classes, fk.table),
-                **table_collection_kwargs[fk.table]
+                **table_collection_kwargs[fk.table],
+                description="Related rows from the {} table".format(fk.table)
             )
             table_dict["resolve_{}_list".format(fk.table)] = make_table_resolver(
                 datasette,
@@ -182,7 +183,9 @@ async def schema_for_database(datasette, database=None, tables=None):
             (
                 table,
                 graphene.Field(
-                    table_collection_class, **table_collection_kwargs[table]
+                    table_collection_class,
+                    **table_collection_kwargs[table],
+                    description="Rows from the {} table".format(table)
                 ),
             )
         )
@@ -207,7 +210,11 @@ async def schema_for_database(datasette, database=None, tables=None):
         to_add.append(
             (
                 "{}_row".format(table),
-                graphene.Field(table_node_class, **table_row_kwargs),
+                graphene.Field(
+                    table_node_class,
+                    **table_row_kwargs,
+                    description="Single row from the {} table".format(table)
+                ),
             )
         )
         to_add.append(
