@@ -146,7 +146,9 @@ async def schema_for_database(datasette, database=None, tables=None):
         to_add.append(
             (
                 "resolve_{}".format(meta.graphql_name),
-                make_table_resolver(datasette, db.name, table, table_classes, meta),
+                make_table_resolver(
+                    datasette, db.name, table, table_classes, table_metadata
+                ),
             )
         )
         # *_row field
@@ -158,7 +160,7 @@ async def schema_for_database(datasette, database=None, tables=None):
                 pk_column_type = graphene.Int()
             else:
                 pk_column_type = types[meta.columns[pk]]
-            table_row_kwargs[pk] = pk_column_type
+            table_row_kwargs[meta.graphql_columns.get(pk, pk)] = pk_column_type
         to_add.append(
             (
                 "{}_row".format(meta.graphql_name),
@@ -179,7 +181,7 @@ async def schema_for_database(datasette, database=None, tables=None):
                     db.name,
                     table,
                     table_classes,
-                    meta,
+                    table_metadata,
                     pk_args=meta.pks,
                     return_first_row=True,
                 ),
@@ -345,15 +347,7 @@ def make_table_node_class(
         table_dict[
             "resolve_{}_list".format(table_metadata[fk.table].graphql_name)
         ] = make_table_resolver(
-            datasette,
-            db.name,
-            fk.table,
-            table_classes,
-            fk_meta,
-            default_where="[{}] = ".format(fk.column)
-            + "{root."
-            + fk.other_column
-            + "}",
+            datasette, db.name, fk.table, table_classes, table_metadata, related_fk=fk,
         )
 
     table_dict["from_row"] = classmethod(
@@ -377,12 +371,14 @@ def make_table_resolver(
     database_name,
     table_name,
     table_classes,
-    meta,
-    default_where=None,
+    table_metadata,
+    related_fk=None,
     pk_args=None,
     return_first_row=False,
 ):
     from datasette.views.table import TableView
+
+    meta = table_metadata[table_name]
 
     async def resolve_table(
         root,
@@ -432,16 +428,21 @@ def make_table_resolver(
         if search and meta.supports_fts:
             qs["_search"] = search
 
+        if related_fk:
+            related_column = meta.graphql_columns.get(
+                related_fk.column, related_fk.column
+            )
+            related_other_column = table_metadata[
+                related_fk.other_table
+            ].graphql_columns.get(related_fk.other_column, related_fk.other_column)
+            qs[related_column] = getattr(root, related_other_column)
+
         if where:
             qs["_where"] = where
-
         if sort:
             qs["_sort"] = column_name_rev[sort]
         elif sort_desc:
             qs["_sort_desc"] = column_name_rev[sort_desc]
-
-        if default_where:
-            qs["_where"] = default_where.format(root=root)
 
         path_with_query_string = "/{}/{}.json?{}".format(
             database_name, table_name, urllib.parse.urlencode(qs)
