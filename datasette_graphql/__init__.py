@@ -39,7 +39,7 @@ async def view_graphql(request, datasette):
     except KeyError:
         raise NotFound("Database does not exist")
 
-    if not body:
+    if not body and "text/html" in request.headers.get("accept", ""):
         return Response.html(
             await datasette.render_template(
                 "graphiql.html", {"database": database,}, request=request
@@ -48,10 +48,12 @@ async def view_graphql(request, datasette):
                 "Access-Control-Allow-Headers": "content-type",
                 "Access-Control-Allow-Method": "POST",
                 "Access-Control-Allow-Origin": "*",
+                "Vary": "accept",
             }
             if datasette.cors
             else {},
         )
+
     schema = await schema_for_database(datasette, database=database)
 
     if request.args.get("schema"):
@@ -60,13 +62,33 @@ async def view_graphql(request, datasette):
     incoming = {}
     if body:
         incoming = json.loads(body)
-    query = incoming["query"]
-    variables = incoming.get("variables")
+        query = incoming.get("query")
+        variables = incoming.get("variables")
+        operation_name = incoming.get("operationName")
+    else:
+        query = request.args.get("query")
+        variables = request.args.get("variables", "")
+        if variables:
+            variables = json.loads(variables)
+        operation_name = request.args.get("operationName")
+
+    if not query:
+        return Response.json(
+            {"error": "Missing query"},
+            status=400,
+            headers={
+                "Access-Control-Allow-Headers": "content-type",
+                "Access-Control-Allow-Method": "POST",
+                "Access-Control-Allow-Origin": "*",
+            }
+            if datasette.cors
+            else {},
+        )
 
     result = await graphql(
         schema,
         query,
-        operation_name=incoming.get("operationName"),
+        operation_name=operation_name,
         variable_values=variables,
         executor=AsyncioExecutor(),
         return_promise=True,
@@ -80,7 +102,7 @@ async def view_graphql(request, datasette):
         status=200 if not result.errors else 500,
         headers={
             "Access-Control-Allow-Headers": "content-type",
-            "Access-Control-Request-Method": "POST",
+            "Access-Control-Allow-Method": "POST",
             "Access-Control-Allow-Origin": "*",
         }
         if datasette.cors

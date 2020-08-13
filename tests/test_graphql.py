@@ -21,7 +21,9 @@ async def test_plugin_is_installed():
 async def test_graphiql():
     app = Datasette([], memory=True).app()
     async with httpx.AsyncClient(app=app) as client:
-        response = await client.get("http://localhost/graphql")
+        response = await client.get(
+            "http://localhost/graphql", headers={"Accept": "text/html"}
+        )
         assert 200 == response.status_code
         assert "<title>GraphiQL</title>" in response.text
 
@@ -307,7 +309,7 @@ async def test_cors_headers(db_path, cors_enabled):
     ds = Datasette([db_path], cors=cors_enabled,)
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.options("http://localhost/graphql")
-        assert response.status_code == 200
+        assert response.status_code == 400
         desired_headers = {
             "access-control-allow-headers": "content-type",
             "access-control-allow-method": "POST",
@@ -321,7 +323,7 @@ async def test_cors_headers(db_path, cors_enabled):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "operation_name,expected_status,expected_json",
+    "operation_name,expected_status,expected_data",
     [
         ("Q1", 200, {"data": {"users_row": {"name": "cleopaws"}}}),
         ("Q2", 200, {"data": {"users_row": {"id": 1}}}),
@@ -339,7 +341,7 @@ async def test_cors_headers(db_path, cors_enabled):
         ),
     ],
 )
-async def test_operation_name(ds, operation_name, expected_status, expected_json):
+async def test_operation_name(ds, operation_name, expected_status, expected_data):
     query = """
     query Q1 {
         users_row {
@@ -358,4 +360,62 @@ async def test_operation_name(ds, operation_name, expected_status, expected_json
             json={"query": query, "operationName": operation_name},
         )
         assert response.status_code == expected_status, response.json()
-        assert response.json() == expected_json
+        assert response.json() == expected_data
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query,extra_query_string,expected_data",
+    [
+        # Regular query
+        (
+            """
+            {
+                users_row {
+                    name
+                }
+            }
+            """,
+            {},
+            {"data": {"users_row": {"name": "cleopaws"}}},
+        ),
+        # operationName
+        (
+            """
+            query Q1 {
+                users_row {
+                    name
+                }
+            }
+            query Q2 {
+                users_row {
+                    id
+                }
+            }
+            """,
+            {"operationName": "Q2"},
+            {"data": {"users_row": {"id": 1}}},
+        ),
+        # variables
+        (
+            """
+            query specific_repo($name: String) {
+                repos(filter: {name: {eq: $name}}) {
+                    nodes {
+                        name
+                    }
+                }
+            }
+            """,
+            {"variables": json.dumps({"name": "datasette"})},
+            {"data": {"repos": {"nodes": [{"name": "datasette"}]}}},
+        ),
+    ],
+)
+async def test_graphql_http_get(ds, query, extra_query_string, expected_data):
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        params = dict(extra_query_string)
+        params["query"] = query
+        response = await client.get("http://localhost/graphql", params=params)
+        assert response.status_code == 200
+        assert response.json() == expected_data
