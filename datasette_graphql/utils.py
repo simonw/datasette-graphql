@@ -73,7 +73,7 @@ async def schema_for_database(datasette, database=None, tables=None):
     table_collection_kwargs = {}
 
     for table, meta in table_metadata.items():
-        column_names = [c for c in meta.columns.keys() if " " not in c]
+        column_names = meta.graphql_columns.values()
         options = list(zip(column_names, column_names))
         sort_enum = graphene.Enum.from_enum(
             Enum("{}Sort".format(meta.graphql_name), options)
@@ -436,9 +436,9 @@ def make_table_resolver(
             qs["_where"] = where
 
         if sort:
-            qs["_sort"] = sort
+            qs["_sort"] = column_name_rev[sort]
         elif sort_desc:
-            qs["_sort_desc"] = sort_desc
+            qs["_sort_desc"] = column_name_rev[sort_desc]
 
         if default_where:
             qs["_where"] = default_where.format(root=root)
