@@ -161,15 +161,16 @@ async def schema_for_database(datasette, database=None, tables=None):
             else:
                 pk_column_type = types[meta.columns[pk]]
             table_row_kwargs[meta.graphql_columns.get(pk, pk)] = pk_column_type
+
         to_add.append(
             (
                 "{}_row".format(meta.graphql_name),
                 graphene.Field(
                     table_node_class,
-                    **table_row_kwargs,
+                    args=table_row_kwargs,
                     description="Single row from the {} {}".format(
                         table, "view" if table_metadata[table].is_view else "table"
-                    )
+                    ),
                 ),
             )
         )

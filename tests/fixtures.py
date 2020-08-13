@@ -31,6 +31,9 @@ def build_database(db):
         [{"$key": "mit", "name": "MIT"}, {"$key": "apache2", "name": "Apache 2"},],
         pk="$key",
     )
+    db["type_compound_key"].insert_all(
+        [{"type": "possum", "id": 1, "name": "Fairway Frank"}], pk=("type", "id")
+    )
     db["repos"].insert_all(
         [
             {
