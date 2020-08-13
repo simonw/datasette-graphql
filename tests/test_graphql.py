@@ -317,3 +317,45 @@ async def test_cors_headers(db_path, cors_enabled):
             assert desired_headers <= dict(response.headers).items()
         else:
             assert not desired_headers <= dict(response.headers).items()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "operation_name,expected_status,expected_json",
+    [
+        ("Q1", 200, {"data": {"users_row": {"name": "cleopaws"}}}),
+        ("Q2", 200, {"data": {"users_row": {"id": 1}}}),
+        (
+            "",
+            500,
+            {
+                "data": None,
+                "errors": [
+                    {
+                        "message": "Must provide operation name if query contains multiple operations."
+                    }
+                ],
+            },
+        ),
+    ],
+)
+async def test_operation_name(ds, operation_name, expected_status, expected_json):
+    query = """
+    query Q1 {
+        users_row {
+            name
+        }
+    }
+    query Q2 {
+        users_row {
+            id
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post(
+            "http://localhost/graphql",
+            json={"query": query, "operationName": operation_name},
+        )
+        assert response.status_code == expected_status, response.json()
+        assert response.json() == expected_json

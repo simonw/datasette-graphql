@@ -66,6 +66,7 @@ async def view_graphql(request, datasette):
     result = await graphql(
         schema,
         query,
+        operation_name=incoming.get("operationName"),
         variable_values=variables,
         executor=AsyncioExecutor(),
         return_promise=True,
