@@ -4,11 +4,22 @@ from enum import Enum
 from datasette.utils.asgi import Request
 import graphene
 import urllib
+import re
 import sqlite_utils
 import wrapt
 
 TableMetadata = namedtuple(
-    "TableMetadata", ("columns", "foreign_keys", "fks_back", "pks", "supports_fts")
+    "TableMetadata",
+    (
+        "columns",
+        "foreign_keys",
+        "fks_back",
+        "pks",
+        "supports_fts",
+        "is_view",
+        "graphql_name",
+        "graphql_columns",
+    ),
 )
 
 
@@ -51,51 +62,24 @@ async def schema_for_database(datasette, database=None, tables=None):
     hidden_tables = await db.hidden_table_names()
 
     # Perform all introspection in a single call to the execute_fn thread
-    def introspect_tables(conn):
-        db = sqlite_utils.Database(conn)
-
-        table_names = db.table_names()
-        view_names = db.view_names()
-
-        table_metadata = {}
-
-        for table in table_names + view_names:
-            columns = db[table].columns_dict
-            foreign_keys = []
-            pks = []
-            supports_fts = False
-            fks_back = []
-            if hasattr(db[table], "foreign_keys"):
-                # Views don't have this
-                foreign_keys = db[table].foreign_keys
-                pks = db[table].pks
-                supports_fts = bool(db[table].detect_fts())
-                # Gather all foreign keys pointing back here
-                collected = []
-                for t in db.tables:
-                    collected.extend(t.foreign_keys)
-                fks_back = [f for f in collected if f.other_table == table]
-            table_metadata[table] = TableMetadata(
-                columns, foreign_keys, fks_back, pks, supports_fts
-            )
-
-        return table_metadata, view_names
-
-    table_metadata, view_names = await db.execute_fn(introspect_tables)
+    table_metadata = await db.execute_fn(introspect_tables)
 
     # Construct the tableFilter classes
     table_filters = {
-        table: make_table_filter_class(table, meta.columns)
+        table: make_table_filter_class(table, meta)
         for table, meta in table_metadata.items()
     }
     # And the table_collection_kwargs
     table_collection_kwargs = {}
+
     for table, meta in table_metadata.items():
-        column_names = meta.columns.keys()
+        column_names = [c for c in meta.columns.keys() if " " not in c]
         options = list(zip(column_names, column_names))
-        sort_enum = graphene.Enum.from_enum(Enum("{}Sort".format(table), options))
+        sort_enum = graphene.Enum.from_enum(
+            Enum("{}Sort".format(meta.graphql_name), options)
+        )
         sort_desc_enum = graphene.Enum.from_enum(
-            Enum("{}SortDesc".format(table), options)
+            Enum("{}SortDesc".format(meta.graphql_name), options)
         )
         kwargs = dict(
             filter=graphene.List(
@@ -123,114 +107,80 @@ async def schema_for_database(datasette, database=None, tables=None):
     table_classes = {}
     table_collection_classes = {}
 
-    for (
-        table,
-        (columns, foreign_keys, fks_back, pks, supports_fts),
-    ) in table_metadata.items():
+    for (table, meta) in table_metadata.items():
+        table_name = meta.graphql_name
         if table in hidden_tables:
             continue
-        fks_by_column = {fk.column: fk for fk in foreign_keys}
-        # Create a node class for this table
-        table_dict = {}
-        if pks == ["rowid"]:
-            table_dict["rowid"] = graphene.Int()
-        column_names = []
-        for colname, coltype in columns.items():
-            column_names.append(colname)
-            if colname in fks_by_column:
-                fk = fks_by_column[colname]
-                table_dict[colname] = graphene.Field(
-                    make_table_getter(table_classes, fk.other_table)
-                )
-                table_dict["resolve_{}".format(colname)] = make_fk_resolver(
-                    db, table, table_classes, fk
-                )
-            else:
-                table_dict[colname] = types[coltype]
 
-        # Now add the backwards foreign key fields for related items
-        for fk in fks_back:
-            meta = table_metadata[fk.table]
-            fk_table_columns = meta.columns
-            filter_class = table_filters[fk.table]
-            table_dict["{}_list".format(fk.table)] = graphene.Field(
-                make_table_collection_getter(table_collection_classes, fk.table),
-                **table_collection_kwargs[fk.table],
-                description="Related rows from the {} table".format(fk.table)
-            )
-            table_dict["resolve_{}_list".format(fk.table)] = make_table_resolver(
-                datasette,
-                db.name,
-                fk.table,
-                table_classes,
-                meta.supports_fts,
-                default_where="[{}] = ".format(fk.column)
-                + "{root."
-                + fk.other_column
-                + "}",
-            )
-
-        table_node_class = type(table, (graphene.ObjectType,), table_dict)
+        # (columns, foreign_keys, fks_back, pks, supports_fts) = table_meta
+        table_node_class = make_table_node_class(
+            datasette,
+            db,
+            table,
+            table_classes,
+            table_filters,
+            table_metadata,
+            table_collection_classes,
+            table_collection_kwargs,
+        )
         table_classes[table] = table_node_class
 
         # We also need a table collection class - this is the thing with the
         # nodes, edges, pageInfo and totalCount fields for that table
         table_collection_class = make_table_collection_class(
-            table, table_node_class, pks
+            table, table_node_class, meta
         )
         table_collection_classes[table] = table_collection_class
         to_add.append(
             (
-                table,
+                meta.graphql_name,
                 graphene.Field(
                     table_collection_class,
                     **table_collection_kwargs[table],
                     description="Rows from the {} {}".format(
-                        table, "view" if table in view_names else "table"
+                        table, "view" if table_metadata[table].is_view else "table"
                     )
                 ),
             )
         )
         to_add.append(
             (
-                "resolve_{}".format(table),
-                make_table_resolver(
-                    datasette, db.name, table, table_classes, supports_fts
-                ),
+                "resolve_{}".format(meta.graphql_name),
+                make_table_resolver(datasette, db.name, table, table_classes, meta),
             )
         )
         # *_row field
         table_row_kwargs = dict(table_collection_kwargs[table])
         table_row_kwargs.pop("first")
         # Add an argument for each primary key
-        for pk in pks:
-            if pk == "rowid" and pk not in columns:
+        for pk in meta.pks:
+            if pk == "rowid" and pk not in meta.columns:
                 pk_column_type = graphene.Int()
             else:
-                pk_column_type = types[columns[pk]]
+                pk_column_type = types[meta.columns[pk]]
             table_row_kwargs[pk] = pk_column_type
         to_add.append(
             (
-                "{}_row".format(table),
+                "{}_row".format(meta.graphql_name),
                 graphene.Field(
                     table_node_class,
                     **table_row_kwargs,
                     description="Single row from the {} {}".format(
-                        table, "view" if table in view_names else "table"
+                        table, "view" if table_metadata[table].is_view else "table"
                     )
                 ),
             )
         )
         to_add.append(
             (
-                "resolve_{}_row".format(table),
+                "resolve_{}_row".format(meta.graphql_name),
                 make_table_resolver(
                     datasette,
                     db.name,
                     table,
                     table_classes,
-                    supports_fts,
-                    pk_args=pks,
+                    meta,
+                    pk_args=meta.pks,
                     return_first_row=True,
                 ),
             )
@@ -247,13 +197,15 @@ async def schema_for_database(datasette, database=None, tables=None):
     )
 
 
-def make_table_collection_class(table, table_class, pks):
+def make_table_collection_class(table, table_class, meta):
+    table_name = meta.graphql_name
+
     class _Edge(graphene.ObjectType):
         cursor = graphene.String()
         node = graphene.Field(table_class)
 
         class Meta:
-            name = "{}Edge".format(table)
+            name = "{}Edge".format(table_name)
 
     class _TableCollection(graphene.ObjectType):
         totalCount = graphene.Int()
@@ -269,7 +221,10 @@ def make_table_collection_class(table, table_class, pks):
 
         def resolve_edges(parent, info):
             return [
-                {"cursor": path_from_row_pks(row, pks, use_rowid=not pks), "node": row}
+                {
+                    "cursor": path_from_row_pks(row, meta.pks, use_rowid=not meta.pks),
+                    "node": row,
+                }
                 for row in parent["rows"]
             ]
 
@@ -280,7 +235,7 @@ def make_table_collection_class(table, table_class, pks):
             }
 
         class Meta:
-            name = "{}Collection".format(table)
+            name = "{}Collection".format(table_name)
 
     return _TableCollection
 
@@ -331,15 +286,83 @@ types_to_operations = {
 }
 
 
-def make_table_filter_class(table, columns):
+def make_table_filter_class(table, meta):
     return type(
-        "{}Filter".format(table),
+        "{}Filter".format(meta.graphql_name),
         (graphene.InputObjectType,),
         {
-            column: (types_to_operations.get(column_type) or StringOperations)()
-            for column, column_type in columns.items()
+            meta.graphql_columns[column]: (
+                types_to_operations.get(column_type) or StringOperations
+            )()
+            for column, column_type in meta.columns.items()
         },
     )
+
+
+def make_table_node_class(
+    datasette,
+    db,
+    table,
+    table_classes,
+    table_filters,
+    table_metadata,
+    table_collection_classes,
+    table_collection_kwargs,
+):
+    meta = table_metadata[table]
+    fks_by_column = {fk.column: fk for fk in meta.foreign_keys}
+
+    # Create a node class for this table
+    table_dict = {}
+    if meta.pks == ["rowid"]:
+        table_dict["rowid"] = graphene.Int()
+
+    for colname, coltype in meta.columns.items():
+        graphql_name = meta.graphql_columns[colname]
+        if colname in fks_by_column:
+            fk = fks_by_column[colname]
+            table_dict[graphql_name] = graphene.Field(
+                make_table_getter(table_classes, fk.other_table)
+            )
+            table_dict["resolve_{}".format(graphql_name)] = make_fk_resolver(
+                db, table, table_classes, fk
+            )
+        else:
+            table_dict[graphql_name] = types[coltype]
+
+    # Now add the backwards foreign key fields for related items
+    for fk in meta.fks_back:
+        fk_meta = table_metadata[fk.table]
+        fk_table_columns = fk_meta.columns
+        filter_class = table_filters[fk.table]
+        table_dict[
+            "{}_list".format(table_metadata[fk.table].graphql_name)
+        ] = graphene.Field(
+            make_table_collection_getter(table_collection_classes, fk.table),
+            **table_collection_kwargs[fk.table],
+            description="Related rows from the {} table".format(fk.table)
+        )
+        table_dict[
+            "resolve_{}_list".format(table_metadata[fk.table].graphql_name)
+        ] = make_table_resolver(
+            datasette,
+            db.name,
+            fk.table,
+            table_classes,
+            fk_meta,
+            default_where="[{}] = ".format(fk.column)
+            + "{root."
+            + fk.other_column
+            + "}",
+        )
+
+    table_dict["from_row"] = classmethod(
+        lambda cls, row: cls(
+            **dict([(meta.graphql_columns.get(k, k), v) for k, v in dict(row).items()])
+        )
+    )
+
+    return type(meta.graphql_name, (graphene.ObjectType,), table_dict)
 
 
 class DatasetteSpecialConfig(wrapt.ObjectProxy):
@@ -354,7 +377,7 @@ def make_table_resolver(
     database_name,
     table_name,
     table_classes,
-    supports_fts,
+    meta,
     default_where=None,
     pk_args=None,
     return_first_row=False,
@@ -380,6 +403,7 @@ def make_table_resolver(
             first = 1
 
         pairs = []
+        column_name_rev = {v: k for k, v in meta.graphql_columns.items()}
         for filter_ in filter or []:
             for column_name, operations in filter_.items():
                 for operation_name, value in operations.items():
@@ -387,7 +411,9 @@ def make_table_resolver(
                         value = ",".join(value)
                     pairs.append(
                         [
-                            "{}__{}".format(column_name, operation_name.rstrip("_")),
+                            "{}__{}".format(
+                                column_name_rev[column_name], operation_name.rstrip("_")
+                            ),
                             value,
                         ]
                     )
@@ -403,7 +429,7 @@ def make_table_resolver(
             qs["_next"] = after
         qs["_size"] = first
 
-        if search and supports_fts:
+        if search and meta.supports_fts:
             qs["_search"] = search
 
         if where:
@@ -427,7 +453,7 @@ def make_table_resolver(
             request, database=database_name, hash=None, table=table_name, _next=after
         )
         klass = table_classes[table_name]
-        data["rows"] = [klass(**dict(r)) for r in data["rows"]]
+        data["rows"] = [klass.from_row(r) for r in data["rows"]]
         if return_first_row:
             try:
                 return data["rows"][0]
@@ -450,7 +476,7 @@ def make_fk_resolver(db, table, table_classes, fk):
         results = await db.execute(sql, params)
         fk_class = table_classes[fk.other_table]
         try:
-            return [fk_class(**dict(row)) for row in results.rows][0]
+            return [fk_class.from_row(row) for row in results.rows][0]
         except IndexError:
             return None
 
@@ -484,3 +510,67 @@ def path_from_row_pks(row, pks, use_rowid, quote=True):
         bits = [str(bit) for bit in bits]
 
     return ",".join(bits)
+
+
+def introspect_tables(conn):
+    db = sqlite_utils.Database(conn)
+
+    table_names = db.table_names()
+    view_names = db.view_names()
+
+    table_metadata = {}
+    table_namer = Namer()
+
+    for table in table_names + view_names:
+        columns = db[table].columns_dict
+        foreign_keys = []
+        pks = []
+        supports_fts = False
+        fks_back = []
+        if hasattr(db[table], "foreign_keys"):
+            # Views don't have this
+            foreign_keys = db[table].foreign_keys
+            pks = db[table].pks
+            supports_fts = bool(db[table].detect_fts())
+            # Gather all foreign keys pointing back here
+            collected = []
+            for t in db.tables:
+                collected.extend(t.foreign_keys)
+            fks_back = [f for f in collected if f.other_table == table]
+        is_view = table in view_names
+        column_namer = Namer()
+        table_metadata[table] = TableMetadata(
+            columns=columns,
+            foreign_keys=foreign_keys,
+            fks_back=fks_back,
+            pks=pks,
+            supports_fts=supports_fts,
+            is_view=is_view,
+            graphql_name=table_namer.name(table),
+            graphql_columns={column: column_namer.name(column) for column in columns},
+        )
+
+    return table_metadata
+
+
+_invalid_chars_re = re.compile(r"[^_a-zA-Z0-9]")
+
+
+class Namer:
+    def __init__(self):
+        self.names = set()
+
+    def name(self, value):
+        value = "_".join(value.split())
+        value = _invalid_chars_re.sub("_", value)
+        if not value:
+            value = "_"
+        if value[0].isdigit():
+            value = "_" + value
+        suffix = 2
+        orig = value
+        while value in self.names:
+            value = orig + "_" + str(suffix)
+            suffix += 1
+        self.names.add(value)
+        return value

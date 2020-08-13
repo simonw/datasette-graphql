@@ -14,7 +14,7 @@ def build_database(db):
                 "points": 5,
                 "score": 51.5,
                 "joined": "2018-11-04 00:05:23",
-                "dog_award": "3rd best mutt",
+                "dog award": "3rd best mutt",
             },
             {
                 "id": 2,
@@ -22,7 +22,7 @@ def build_database(db):
                 "points": 3,
                 "score": 35.2,
                 "joined": "2019-04-03 12:35:11",
-                "dog_award": None,
+                "dog award": None,
             },
         ],
         pk="id",
@@ -66,7 +66,7 @@ def build_database(db):
         pk="id",
         foreign_keys=("user", "repo"),
     )
-    db["images"].insert({"path": "1x1.gif", "content": GIF_1x1}, pk="path")
+    db["1_images"].insert({"path": "1x1.gif", "content": GIF_1x1}, pk="path")
     # To test pagination with both rowid, single-pk and compound-pk tables:
     db["table_with_rowid"].insert_all(
         [{"name": "Row {}".format(i)} for i in range(1, 22)]

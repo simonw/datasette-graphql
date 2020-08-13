@@ -49,8 +49,8 @@ async def test_query_fields(ds):
             for f in response.json()["data"]["__schema"]["queryType"]["fields"]
         }
         assert fields == {
-            "images_row",
-            "images",
+            "_1_images_row",
+            "_1_images",
             "issues_row",
             "issues",
             "licenses_row",
@@ -293,12 +293,12 @@ async def test_graphql_output_schema(ds):
             "input IntegerOperations {",
             "users(filter: [usersFilter], where: String, first: Int, after: String, sort: usersSort, sort_desc: usersSortDesc): usersCollection",
             "users_row(id: Int, filter: [usersFilter], where: String, after: String, sort: usersSort, sort_desc: usersSortDesc): users",
-            "type images {",
-            "type imagesCollection {",
-            "type imagesEdge {",
-            "input imagesFilter {",
-            "enum imagesSort {",
-            "enum imagesSortDesc {",
+            "type _1_images {",
+            "type _1_imagesCollection {",
+            "type _1_imagesEdge {",
+            "input _1_imagesFilter {",
+            "enum _1_imagesSort {",
+            "enum _1_imagesSortDesc {",
         ):
             assert fragment in response.text
 
