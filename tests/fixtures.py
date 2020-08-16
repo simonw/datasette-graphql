@@ -70,6 +70,8 @@ def build_database(db):
         foreign_keys=("user", "repo"),
     )
     db["1_images"].insert({"path": "1x1.gif", "content": GIF_1x1}, pk="path")
+    # https://github.com/simonw/datasette-graphql/issues/48
+    db["_table_"].insert({"_column_": 1})
     # To test pagination with both rowid, single-pk and compound-pk tables:
     db["table_with_rowid"].insert_all(
         [{"name": "Row {}".format(i)} for i in range(1, 22)]

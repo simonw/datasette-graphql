@@ -521,7 +521,7 @@ def introspect_tables(conn):
     view_names = db.view_names()
 
     table_metadata = {}
-    table_namer = Namer()
+    table_namer = Namer("t")
 
     for table in table_names + view_names:
         columns = db[table].columns_dict
@@ -540,7 +540,7 @@ def introspect_tables(conn):
                 collected.extend(t.foreign_keys)
             fks_back = [f for f in collected if f.other_table == table]
         is_view = table in view_names
-        column_namer = Namer()
+        column_namer = Namer("c")
         table_metadata[table] = TableMetadata(
             columns=columns,
             foreign_keys=foreign_keys,
@@ -559,8 +559,9 @@ _invalid_chars_re = re.compile(r"[^_a-zA-Z0-9]")
 
 
 class Namer:
-    def __init__(self):
+    def __init__(self, underscore_prefix=""):
         self.names = set()
+        self.underscore_prefix = underscore_prefix
 
     def name(self, value):
         value = "_".join(value.split())
@@ -571,6 +572,8 @@ class Namer:
             value = "_" + value
         suffix = 2
         orig = value
+        if value.startswith("_") and value.endswith("_"):
+            value = self.underscore_prefix + value
         while value in self.names:
             value = orig + "_" + str(suffix)
             suffix += 1

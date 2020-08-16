@@ -51,6 +51,8 @@ async def test_query_fields(ds):
         assert fields == {
             "_1_images_row",
             "_1_images",
+            "t_table_",
+            "t_table__row",
             "issues_row",
             "issues",
             "licenses_row",
