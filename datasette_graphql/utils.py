@@ -57,7 +57,7 @@ class PageInfo(graphene.ObjectType):
     hasNextPage = graphene.Boolean()
 
 
-async def schema_for_database(datasette, database=None, tables=None):
+async def query_for_database(datasette, database=None, tables=None):
     db = datasette.get_database(database)
     hidden_tables = await db.hidden_table_names()
 
@@ -74,7 +74,8 @@ async def schema_for_database(datasette, database=None, tables=None):
 
     for table, meta in table_metadata.items():
         column_names = meta.graphql_columns.values()
-        options = list(zip(column_names, column_names))
+        column_names_for_enums = [c for c in column_names if not _is_sunder(c)]
+        options = list(zip(column_names_for_enums, column_names_for_enums))
         sort_enum = graphene.Enum.from_enum(
             Enum("{}Sort".format(meta.graphql_name), options)
         )
@@ -190,14 +191,11 @@ async def schema_for_database(datasette, database=None, tables=None):
         )
 
     Query = type(
-        "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
+        "{}Query".format(db.name),
+        (graphene.ObjectType,),
+        {key: value for key, value in to_add},
     )
-    return graphene.Schema(
-        query=Query,
-        auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
-            "auto_camelcase", False
-        ),
-    )
+    return Query
 
 
 def make_table_collection_class(table, table_class, meta):
@@ -576,3 +574,13 @@ class Namer:
             suffix += 1
         self.names.add(value)
         return value
+
+
+def _is_sunder(name):
+    """Returns True if a _sunder_ name, False otherwise."""
+    return (
+        name[0] == name[-1] == "_"
+        and name[1:2] != "_"
+        and name[-2:-1] != "_"
+        and len(name) > 2
+    )

@@ -1,11 +1,12 @@
 from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound
+import graphene
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
-from .utils import schema_for_database
+from .utils import query_for_database
 
 
 async def post_body(request):
@@ -26,7 +27,13 @@ async def view_graphql_schema(request, datasette):
         datasette.get_database(database)
     except KeyError:
         raise NotFound("Database does not exist")
-    schema = await schema_for_database(datasette, database=database)
+    db_query = await query_for_database(datasette, database=database)
+    schema = graphene.Schema(
+        query=db_query,
+        auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
+            "auto_camelcase", False
+        ),
+    )
     return Response.text(print_schema(schema))
 
 
@@ -54,10 +61,27 @@ async def view_graphql(request, datasette):
             else {},
         )
 
-    schema = await schema_for_database(datasette, database=database)
+    # Complex logic here for merging different databases
+    db_query = await query_for_database(datasette, database=database)
 
-    if request.args.get("schema"):
-        return Response.text(print_schema(schema))
+    db_queries = {}
+    for name in datasette.databases:
+        db_queries[name] = await query_for_database(datasette, database=name)
+
+    root_query_properties = {
+        "{}_db".format(db_name): graphene.Field(
+            db_query, resolver=lambda parent, info: {}
+        )
+        for db_name, db_query in db_queries.items()
+    }
+    RootQuery = type("RootQuery", (graphene.ObjectType,), root_query_properties)
+
+    schema = graphene.Schema(
+        query=RootQuery,
+        auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
+            "auto_camelcase", False
+        ),
+    )
 
     incoming = {}
     if body:
