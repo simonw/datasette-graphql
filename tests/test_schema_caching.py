@@ -1,14 +1,17 @@
 from datasette.app import Datasette
 from datasette_graphql.utils import schema_for_database, _schema_cache
-from graphql.execution.executors.asyncio import AsyncioExecutor
-from graphql import graphql
 import sqlite_utils
 import pytest
 from unittest import mock
 import httpx
+import sys
 from .fixtures import build_database
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 8),
+    reason="async mocks from patch() require 3.8 or higher - #52",
+)
 @pytest.mark.asyncio
 @mock.patch("datasette_graphql.utils.schema_for_database")
 async def test_schema_caching(mock_schema_for_database, tmp_path_factory):
