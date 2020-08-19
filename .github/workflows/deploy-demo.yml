@@ -51,4 +51,5 @@ jobs:
         datasette publish cloudrun github.db fixtures.db \
           -m metadata.json \
           --install=https://github.com/simonw/datasette-graphql/archive/$GITHUB_SHA.zip \
+          --install=datasette-schema-versions \
           --service datasette-graphql-demo
