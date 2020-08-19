@@ -261,6 +261,45 @@ This plugin obeys the `--cors` option passed to the `datasette` command-line too
     access-control-allow-method: POST
     access-control-allow-origin: *
 
+## The graphql() template function
+
+The plugin also makes a Jinja template function available called `graphql()`. You can use that function in your Datasette [custom templates](https://docs.datasette.io/en/stable/custom_templates.html#custom-templates) like so:
+
+```html+jinja
+{% set users = graphql("""
+{
+    users {
+        nodes {
+            name
+            points
+            score
+        }
+    }
+}
+""")["users"] %}
+{% for user in users.nodes %}
+    <p>{{ user.name }} - points: {{ user.points }}, score = {{ user.score }}</p>
+{% endfor %}
+```
+
+The function executes a GraphQL query against the generated schema and returns the results. You can assign those results to a variable in your template and then loop through and display them.
+
+By default the query will be run against the first attached database. You can use the optional second argument to the function to specify a different database - for example, to run against an attached `github.db` database you would do this:
+
+```html+jinja
+{% set user = graphql("""
+{
+    users_row(id:9599) {
+        name
+        login
+        avatar_url
+    }
+}
+""", "github")["users_row"] %}
+
+<h1>Hello, {{ user.name }}</h1>
+```
+
 ## Still to come
 
 See [issues](https://github.com/simonw/datasette-graphql/issues) for a full list. Planned improvements include:

@@ -112,6 +112,23 @@ def register_routes():
 
 
 @hookimpl
+def extra_template_vars(datasette):
+    async def graphql_template_tag(query, database=None):
+        schema = await schema_for_database_via_cache(datasette, database=database)
+        result = await graphql(
+            schema, query, executor=AsyncioExecutor(), return_promise=True,
+        )
+        if result.errors:
+            raise Exception(result.errors)
+        else:
+            return result.data
+
+    return {
+        "graphql": graphql_template_tag,
+    }
+
+
+@hookimpl
 def startup(datasette):
     # Validate configuration
     config = datasette.plugin_config("datasette-graphql") or {}
