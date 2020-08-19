@@ -12,6 +12,9 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
 
 ![GraphiQL animated demo](https://static.simonwillison.net/static/2020/graphiql.gif)
 
+<!-- toc -->
+<!-- tocstop -->
+
 ## Installation
 
 Install this plugin in the same environment as Datasette.
