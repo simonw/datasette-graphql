@@ -13,6 +13,23 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
 ![GraphiQL animated demo](https://static.simonwillison.net/static/2020/graphiql.gif)
 
 <!-- toc -->
+
+- [Installation](#installation)
+- [Usage](#usage)
+  * [Querying for tables and columns](#querying-for-tables-and-columns)
+  * [Fetching a single record](#fetching-a-single-record)
+  * [Accessing nested objects](#accessing-nested-objects)
+  * [Accessing related objects](#accessing-related-objects)
+  * [Filtering tables](#filtering-tables)
+  * [Sorting](#sorting)
+  * [Pagination](#pagination)
+  * [Search](#search)
+  * [Auto camelCase](#auto-camelcase)
+  * [CORS](#cors)
+- [The graphql() template function](#the-graphql-template-function)
+- [Still to come](#still-to-come)
+- [Development](#development)
+
 <!-- tocstop -->
 
 ## Installation
