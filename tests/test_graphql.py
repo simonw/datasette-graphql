@@ -313,7 +313,7 @@ async def test_cors_headers(db_path, cors_enabled):
     ds = Datasette([db_path], cors=cors_enabled,)
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.options("http://localhost/graphql")
-        assert response.status_code == 400
+        assert response.status_code == 200
         desired_headers = {
             "access-control-allow-headers": "content-type",
             "access-control-allow-method": "POST",

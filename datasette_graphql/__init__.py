@@ -30,7 +30,18 @@ async def view_graphql_schema(request, datasette):
     return Response.text(print_schema(schema))
 
 
+CORS_HEADERS = {
+    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Allow-Method": "POST",
+    "Access-Control-Allow-Origin": "*",
+    "Vary": "accept",
+}
+
+
 async def view_graphql(request, datasette):
+    if request.method == "OPTIONS":
+        return Response.text("ok", headers=CORS_HEADERS if datasette.cors else {})
+
     body = await post_body(request)
     database = request.url_vars.get("database")
 
@@ -44,14 +55,7 @@ async def view_graphql(request, datasette):
             await datasette.render_template(
                 "graphiql.html", {"database": database,}, request=request
             ),
-            headers={
-                "Access-Control-Allow-Headers": "content-type",
-                "Access-Control-Allow-Method": "POST",
-                "Access-Control-Allow-Origin": "*",
-                "Vary": "accept",
-            }
-            if datasette.cors
-            else {},
+            headers=CORS_HEADERS if datasette.cors else {},
         )
 
     schema = await schema_for_database(datasette, database=database)
@@ -76,13 +80,7 @@ async def view_graphql(request, datasette):
         return Response.json(
             {"error": "Missing query"},
             status=400,
-            headers={
-                "Access-Control-Allow-Headers": "content-type",
-                "Access-Control-Allow-Method": "POST",
-                "Access-Control-Allow-Origin": "*",
-            }
-            if datasette.cors
-            else {},
+            headers=CORS_HEADERS if datasette.cors else {},
         )
 
     result = await graphql(
@@ -100,13 +98,7 @@ async def view_graphql(request, datasette):
     return Response.json(
         response,
         status=200 if not result.errors else 500,
-        headers={
-            "Access-Control-Allow-Headers": "content-type",
-            "Access-Control-Allow-Method": "POST",
-            "Access-Control-Allow-Origin": "*",
-        }
-        if datasette.cors
-        else {},
+        headers=CORS_HEADERS if datasette.cors else {},
     )
 
 
