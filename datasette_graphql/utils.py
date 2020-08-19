@@ -57,7 +57,27 @@ class PageInfo(graphene.ObjectType):
     hasNextPage = graphene.Boolean()
 
 
-async def schema_for_database(datasette, database=None, tables=None):
+# cache keys are (database, schema_version) tuples
+_schema_cache = {}
+
+
+async def schema_for_database_via_cache(datasette, database=None):
+    db = datasette.get_database(database)
+    schema_version = (await db.execute("PRAGMA schema_version")).first()[0]
+    cache_key = (database, schema_version)
+    if cache_key not in _schema_cache:
+        schema = await schema_for_database(datasette, database)
+        _schema_cache[cache_key] = schema
+        # Delete other cached versions of this database
+        to_delete = [
+            key for key in _schema_cache if key[0] == database and key != cache_key
+        ]
+        for key in to_delete:
+            del _schema_cache[key]
+    return _schema_cache[cache_key]
+
+
+async def schema_for_database(datasette, database=None):
     db = datasette.get_database(database)
     hidden_tables = await db.hidden_table_names()
 

@@ -5,7 +5,7 @@ from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
-from .utils import schema_for_database
+from .utils import schema_for_database_via_cache
 
 
 async def post_body(request):
@@ -26,7 +26,7 @@ async def view_graphql_schema(request, datasette):
         datasette.get_database(database)
     except KeyError:
         raise NotFound("Database does not exist")
-    schema = await schema_for_database(datasette, database=database)
+    schema = await schema_for_database_via_cache(datasette, database=database)
     return Response.text(print_schema(schema))
 
 
@@ -58,7 +58,7 @@ async def view_graphql(request, datasette):
             headers=CORS_HEADERS if datasette.cors else {},
         )
 
-    schema = await schema_for_database(datasette, database=database)
+    schema = await schema_for_database_via_cache(datasette, database=database)
 
     if request.args.get("schema"):
         return Response.text(print_schema(schema))
