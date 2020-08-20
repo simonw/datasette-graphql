@@ -36,7 +36,20 @@ jobs:
             "title": "datasette-graphql demo",
             "about": "simonw/datasette-graphql",
             "about_url": "https://github.com/simonw/datasette-graphql",
-            "description_html": "Try it out at <a href=\"/graphql\">/graphql</a>"
+            "description_html": "Try it out at <a href=\"/graphql\">/graphql</a>",
+            "databases": {
+                "test": {
+                    "tables": {
+                        "repos": {
+                            "plugins": {
+                                "datasette-graphql": {
+                                    "json_columns": ["tags"]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }' > metadata.json
     - name: Set up Cloud Run
       uses: GoogleCloudPlatform/github-actions/setup-gcloud@master

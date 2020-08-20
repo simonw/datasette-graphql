@@ -104,7 +104,7 @@ def db_path2(tmp_path_factory):
     db_directory = tmp_path_factory.mktemp("dbs")
     db_path = db_directory / "test2.db"
     db = sqlite_utils.Database(db_path)
-    db["test"].insert({"body": "This is test two"})
+    db["test_table"].insert({"full_name": "This is a full name"})
     return db_path
 
 

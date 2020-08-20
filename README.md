@@ -255,6 +255,32 @@ If a table has been configured to use SQLite full-text search you can execute se
 
 The [sqlite-utils](https://sqlite-utils.readthedocs.io/) Python library and CLI tool can be used to add full-text search to an existing database table.
 
+### Columns containing JSON strings
+
+If your table has a column that contains data encoded as JSON, `datasette-graphql` will make that column available as an encoded JSON string. Clients calling your API will need to parse the string as JSON in order to access the data.
+
+You can return the data as a nested structure by configuring that column to be treated as a JSON column. The plugin configuration for that looks like this:
+
+```json
+{
+    "databases": {
+        "test": {
+            "tables": {
+                "repos": {
+                    "plugins": {
+                        "datasette-graphql": {
+                            "json_columns": [
+                                "tags"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
 ### Auto camelCase
 
 The names of your columns and tables default to being matched by their representations in GraphQL.

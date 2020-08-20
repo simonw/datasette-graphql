@@ -3,6 +3,8 @@ from collections import namedtuple
 from enum import Enum
 from datasette.utils.asgi import Request
 import graphene
+from graphene.types import generic
+import json
 import urllib
 import re
 import sqlite_utils
@@ -335,6 +337,13 @@ def make_table_node_class(
     meta = table_metadata[table]
     fks_by_column = {fk.column: fk for fk in meta.foreign_keys}
 
+    table_plugin_config = datasette.plugin_config(
+        "datasette-graphql", database=db.name, table=table
+    )
+    json_columns = []
+    if table_plugin_config and "json_columns" in table_plugin_config:
+        json_columns = table_plugin_config["json_columns"]
+
     # Create a node class for this table
     table_dict = {}
     if meta.pks == ["rowid"]:
@@ -351,7 +360,11 @@ def make_table_node_class(
                 db, table, table_classes, fk
             )
         else:
-            table_dict[graphql_name] = types[coltype]
+            if colname in json_columns:
+                table_dict[graphql_name] = generic.GenericScalar()
+                table_dict["resolve_{}".format(graphql_name)] = resolve_generic
+            else:
+                table_dict[graphql_name] = types[coltype]
 
     # Now add the backwards foreign key fields for related items
     for fk in meta.fks_back:
@@ -573,6 +586,11 @@ def introspect_tables(conn):
         )
 
     return table_metadata
+
+
+def resolve_generic(root, info):
+    json_string = getattr(root, info.field_name, "")
+    return json.loads(json_string)
 
 
 _invalid_chars_re = re.compile(r"[^_a-zA-Z0-9]")

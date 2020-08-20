@@ -1,4 +1,5 @@
 from datasette.app import Datasette
+from datasette_graphql.utils import _schema_cache
 import json
 import pathlib
 import pytest
@@ -164,45 +165,27 @@ async def test_graphql_error(ds):
 @pytest.mark.parametrize(
     "on,expected",
     [
-        (
-            True,
-            {
-                "repos": {
-                    "nodes": [
-                        {"id": 1, "fullName": "simonw/datasette"},
-                        {"id": 2, "fullName": "cleopaws/dogspotter"},
-                    ]
-                }
-            },
-        ),
-        (
-            False,
-            {
-                "repos": {
-                    "nodes": [
-                        {"id": 1, "full_name": "simonw/datasette"},
-                        {"id": 2, "full_name": "cleopaws/dogspotter"},
-                    ]
-                }
-            },
-        ),
+        (True, {"testTable": {"nodes": [{"fullName": "This is a full name"}]}}),
+        (False, {"test_table": {"nodes": [{"full_name": "This is a full name"}]}}),
     ],
 )
-async def test_graphql_auto_camelcase(db_path, on, expected):
+async def test_graphql_auto_camelcase(db_path2, on, expected):
+    _schema_cache.clear()
     ds = Datasette(
-        [db_path], metadata={"plugins": {"datasette-graphql": {"auto_camelcase": on}}}
+        [db_path2], metadata={"plugins": {"datasette-graphql": {"auto_camelcase": on}}}
     )
     query = """
     {
-        repos {
+        TABLE {
             nodes {
-                id
                 NAME
             }
         }
     }
     """.replace(
         "NAME", "fullName" if on else "full_name"
+    ).replace(
+        "TABLE", "testTable" if on else "test_table"
     )
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post("http://localhost/graphql", json={"query": query})
@@ -214,7 +197,7 @@ async def test_graphql_auto_camelcase(db_path, on, expected):
 @pytest.mark.parametrize(
     "table", ["table_with_pk", "table_with_rowid", "table_with_compound_pk"]
 )
-async def test_graphql_auto_camelcase(ds, table):
+async def test_graphql_pagination(ds, table):
     # Every table should have 21 items, so should paginate 3 times
     after = None
     names_from_nodes = []
@@ -270,9 +253,9 @@ async def test_graphql_multiple_databases(db_path, db_path2):
     ds = Datasette([db_path, db_path2])
     query = """
     {
-        test {
+        test_table {
             nodes {
-                body
+                full_name
             }
         }
     }
@@ -283,7 +266,53 @@ async def test_graphql_multiple_databases(db_path, db_path2):
         )
         assert response.status_code == 200, response.json()
         assert response.json() == {
-            "data": {"test": {"nodes": [{"body": "This is test two"}]}}
+            "data": {"test_table": {"nodes": [{"full_name": "This is a full name"}]}}
+        }
+
+
+@pytest.mark.asyncio
+async def test_graphql_json_columns(db_path):
+    _schema_cache.clear()
+    ds = Datasette(
+        [db_path],
+        metadata={
+            "databases": {
+                "test": {
+                    "tables": {
+                        "repos": {
+                            "plugins": {"datasette-graphql": {"json_columns": ["tags"]}}
+                        }
+                    }
+                }
+            }
+        },
+    )
+    query = """
+    {
+        repos {
+            nodes {
+                full_name
+                tags
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200, response.json()
+        assert response.json() == {
+            "data": {
+                "repos": {
+                    "nodes": [
+                        {
+                            "full_name": "simonw/datasette",
+                            "tags": ["databases", "apis"],
+                        },
+                        {"full_name": "cleopaws/dogspotter", "tags": ["dogs"]},
+                        {"full_name": "simonw/private", "tags": []},
+                    ]
+                }
+            }
         }
 
 
