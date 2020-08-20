@@ -22,6 +22,7 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
   * [Sorting](#sorting)
   * [Pagination](#pagination)
   * [Search](#search)
+  * [Columns containing JSON strings](#columns-containing-json-strings)
   * [Auto camelCase](#auto-camelcase)
   * [CORS](#cors)
 - [The graphql() template function](#the-graphql-template-function)
