@@ -103,9 +103,9 @@ async def test_graphql_errors(ds, query, expected_errors):
         assert response.json()["errors"] == expected_errors
 
 
-_graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
-_json_re = re.compile(r"```json\n(.*?)```", re.DOTALL)
-_variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
+graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
+json_re = re.compile(r"```json\n(.*?)```", re.DOTALL)
+variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
 
 
 @pytest.mark.asyncio
@@ -114,12 +114,12 @@ _variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
 )
 async def test_graphql_examples(ds, path):
     content = path.read_text()
-    query = _graphql_re.search(content)[1]
+    query = graphql_re.search(content)[1]
     try:
-        variables = _variables_re.search(content)[1]
+        variables = variables_re.search(content)[1]
     except TypeError:
         variables = "{}"
-    expected = json.loads(_json_re.search(content)[1])
+    expected = json.loads(json_re.search(content)[1])
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post(
             "http://localhost/graphql",
