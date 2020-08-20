@@ -38,7 +38,7 @@ jobs:
             "about_url": "https://github.com/simonw/datasette-graphql",
             "description_html": "Try it out at <a href=\"/graphql\">/graphql</a>",
             "databases": {
-                "test": {
+                "fixtures": {
                     "tables": {
                         "repos": {
                             "plugins": {
