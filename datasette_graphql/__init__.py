@@ -113,10 +113,14 @@ def register_routes():
 
 @hookimpl
 def extra_template_vars(datasette):
-    async def graphql_template_tag(query, database=None):
+    async def graphql_template_tag(query, database=None, variables=None):
         schema = await schema_for_database_via_cache(datasette, database=database)
         result = await graphql(
-            schema, query, executor=AsyncioExecutor(), return_promise=True,
+            schema,
+            query,
+            executor=AsyncioExecutor(),
+            return_promise=True,
+            variable_values=variables or {},
         )
         if result.errors:
             raise Exception(result.errors)

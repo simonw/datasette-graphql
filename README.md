@@ -347,12 +347,21 @@ By default the query will be run against the first attached database. You can us
 <h1>Hello, {{ user.name }}</h1>
 ```
 
-## Still to come
+You can use [GraphQL variables](https://graphql.org/learn/queries/#variables) in these template calls by passing them to the `variables=` argument:
 
-See [issues](https://github.com/simonw/datasette-graphql/issues) for a full list. Planned improvements include:
+```html+jinja
+{% set user = graphql("""
+query ($id: Int) {
+    users_row(id: $id) {
+        name
+        login
+        avatar_url
+    }
+}
+""", database="github", variables={"id": 9599})["users_row"] %}
 
-- Canned query support
-- Ability to allowlist specific tables, views and canned queries
+<h1>Hello, {{ user.name }}</h1>
+```
 
 ## Development
 
