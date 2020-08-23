@@ -100,6 +100,7 @@ def build_database(db):
         pk=("pk1", "pk2"),
     )
     db.create_view("view_on_table_with_pk", "select * from table_with_pk")
+    db.create_view("view_on_repos", "select * from repos")
 
 
 @pytest.fixture(scope="session")

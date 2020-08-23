@@ -72,6 +72,8 @@ async def test_query_fields(ds):
             "users",
             "view_on_table_with_pk_row",
             "view_on_table_with_pk",
+            "view_on_repos_row",
+            "view_on_repos",
         }
 
 
@@ -452,3 +454,41 @@ async def test_graphql_http_get(ds, query, extra_query_string, expected_data):
         response = await client.get("http://localhost/graphql", params=params)
         assert response.status_code == 200
         assert response.json() == expected_data
+
+
+@pytest.mark.asyncio
+async def test_configured_fts_search_for_view(db_path):
+    _schema_cache.clear()
+    ds = Datasette(
+        [db_path],
+        metadata={
+            "databases": {
+                "test": {
+                    "tables": {
+                        "view_on_repos": {"fts_table": "repos_fts", "fts_pk": "id"}
+                    }
+                }
+            }
+        },
+    )
+    query = """
+    {
+        view_on_repos(search: "dogspotter") {
+            nodes {
+                id
+                full_name
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200
+        assert response.json() == {
+            "data": {
+                "view_on_repos": {
+                    "nodes": [{"id": 2, "full_name": "cleopaws/dogspotter"}]
+                }
+            }
+        }
+    _schema_cache.clear()

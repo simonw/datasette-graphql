@@ -84,7 +84,9 @@ async def schema_for_database(datasette, database=None):
     hidden_tables = await db.hidden_table_names()
 
     # Perform all introspection in a single call to the execute_fn thread
-    table_metadata = await db.execute_fn(introspect_tables)
+    table_metadata = await db.execute_fn(
+        lambda conn: introspect_tables(conn, datasette, db.name)
+    )
 
     # Construct the tableFilter classes
     table_filters = {
@@ -555,7 +557,7 @@ def path_from_row_pks(row, pks, use_rowid, quote=True):
     return ",".join(bits)
 
 
-def introspect_tables(conn):
+def introspect_tables(conn, datasette, db_name):
     db = sqlite_utils.Database(conn)
 
     table_names = db.table_names()
@@ -565,16 +567,19 @@ def introspect_tables(conn):
     table_namer = Namer("t")
 
     for table in table_names + view_names:
+        datasette_table_metadata = datasette.table_metadata(
+            table=table, database=db_name
+        )
         columns = db[table].columns_dict
         foreign_keys = []
         pks = []
-        supports_fts = False
+        supports_fts = bool(datasette_table_metadata.get("fts_table"))
         fks_back = []
         if hasattr(db[table], "foreign_keys"):
             # Views don't have this
             foreign_keys = db[table].foreign_keys
             pks = db[table].pks
-            supports_fts = bool(db[table].detect_fts())
+            supports_fts = bool(db[table].detect_fts()) or supports_fts
             # Gather all foreign keys pointing back here
             collected = []
             for t in db.tables:
