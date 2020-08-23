@@ -26,7 +26,6 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
   * [Auto camelCase](#auto-camelcase)
   * [CORS](#cors)
 - [The graphql() template function](#the-graphql-template-function)
-- [Still to come](#still-to-come)
 - [Development](#development)
 
 <!-- tocstop -->
