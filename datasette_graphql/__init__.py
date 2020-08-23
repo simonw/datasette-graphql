@@ -6,6 +6,7 @@ from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
+import time
 
 
 async def post_body(request):
@@ -83,11 +84,19 @@ async def view_graphql(request, datasette):
             headers=CORS_HEADERS if datasette.cors else {},
         )
 
+    context = {
+        "time_started": time.monotonic(),
+        "time_limit_ms": 1000,
+        "table_view_executions": 0,
+        "table_view_limit": 100,
+    }
+
     result = await graphql(
         schema,
         query,
         operation_name=operation_name,
         variable_values=variables,
+        context_value=context,
         executor=AsyncioExecutor(),
         return_promise=True,
     )
