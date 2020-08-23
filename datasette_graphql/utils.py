@@ -500,11 +500,11 @@ def make_table_resolver(
                 assert False, "Time limit exceeded: {:.2f}ms > {}ms - {}".format(
                     elapsed_ms, context["time_limit_ms"], path_with_query_string
                 )
-            context["table_view_executions"] += 1
-            if context["table_view_executions"] > context["table_view_limit"]:
+            context["num_queries_executed"] += 1
+            if context["num_queries_executed"] > context["num_queries_limit"]:
                 assert False, "Query limit exceeded: {} > {} - {}".format(
-                    context["table_view_executions"],
-                    context["table_view_limit"],
+                    context["num_queries_executed"],
+                    context["num_queries_limit"],
                     path_with_query_string,
                 )
 
