@@ -310,7 +310,7 @@ This plugin obeys the `--cors` option passed to the `datasette` command-line too
 
 ### Execution limits
 
-The plugins implements two limits by default:
+The plugin implements two limits by default:
 
 - The total time spent executing all of the underlying SQL queries that make up the GraphQL execution must not exceed 1000ms (one second)
 - The total number of SQL table queries executed as a result of nested GraphQL fields must not exceed 100
