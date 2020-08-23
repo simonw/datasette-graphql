@@ -367,19 +367,26 @@ def make_table_node_class(
                 table_dict[graphql_name] = types[coltype]
 
     # Now add the backwards foreign key fields for related items
+    fk_table_counts = {}
     for fk in meta.fks_back:
-        fk_meta = table_metadata[fk.table]
-        fk_table_columns = fk_meta.columns
+        fk_table_counts[fk.table] = fk_table_counts.get(fk.table, 0) + 1
+    for fk in meta.fks_back:
         filter_class = table_filters[fk.table]
+        if fk_table_counts[fk.table] > 1:
+            field_name = "{}_by_{}_list".format(table_metadata[fk.table].graphql_name, table_metadata[fk.table].graphql_columns[fk.column])
+            field_description = "Related rows from the {} table (by {})".format(fk.table, fk.column)
+        else:
+            field_name = "{}_list".format(table_metadata[fk.table].graphql_name)
+            field_description = "Related rows from the {} table".format(fk.table)
         table_dict[
-            "{}_list".format(table_metadata[fk.table].graphql_name)
+            field_name
         ] = graphene.Field(
             make_table_collection_getter(table_collection_classes, fk.table),
             **table_collection_kwargs[fk.table],
-            description="Related rows from the {} table".format(fk.table)
+            description=field_description
         )
         table_dict[
-            "resolve_{}_list".format(table_metadata[fk.table].graphql_name)
+            "resolve_{}".format(field_name)
         ] = make_table_resolver(
             datasette, db.name, fk.table, table_classes, table_metadata, related_fk=fk,
         )
