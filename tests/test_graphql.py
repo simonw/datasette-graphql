@@ -492,3 +492,133 @@ async def test_configured_fts_search_for_view(db_path):
             }
         }
     _schema_cache.clear()
+
+
+@pytest.mark.asyncio
+async def test_time_limit_ms(db_path):
+    ds = Datasette(
+        [db_path], metadata={"plugins": {"datasette-graphql": {"time_limit_ms": 1}}}
+    )
+    query = """
+    {
+        repos(search: "dogspotter") {
+            nodes {
+                id
+                full_name
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 500
+        response_json = response.json()
+        assert response_json["data"] == {"repos": None}
+        assert len(response_json["errors"]) == 1
+        assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
+        assert response_json["errors"][0]["message"].endswith(
+            " > 1ms - /test/repos.json?_size=10&_search=dogspotter"
+        )
+
+
+@pytest.mark.asyncio
+async def test_num_queries_limit(db_path):
+    ds = Datasette(
+        [db_path], metadata={"plugins": {"datasette-graphql": {"num_queries_limit": 2}}}
+    )
+    query = """
+    {
+        users {
+            nodes {
+                id
+                name
+                repos_list {
+                    nodes {
+                        full_name
+                    }
+                }
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 500
+        assert response.json() == {
+            "data": {
+                "users": {
+                    "nodes": [
+                        {
+                            "id": 1,
+                            "name": "cleopaws",
+                            "repos_list": {
+                                "nodes": [{"full_name": "cleopaws/dogspotter"}]
+                            },
+                        },
+                        {"id": 2, "name": "simonw", "repos_list": None},
+                    ]
+                }
+            },
+            "errors": [
+                {
+                    "message": "Query limit exceeded: 3 > 2 - /test/repos.json?_size=10&owner=2",
+                    "locations": [{"line": 7, "column": 17}],
+                    "path": ["users", "nodes", 1, "repos_list"],
+                }
+            ],
+        }
+
+
+@pytest.mark.asyncio
+async def test_time_limits_0(db_path):
+    ds = Datasette(
+        [db_path],
+        metadata={
+            "plugins": {
+                "datasette-graphql": {"num_queries_limit": 0, "time_limit_ms": 0}
+            }
+        },
+    )
+    query = """
+    {
+        users {
+            nodes {
+                id
+                name
+                repos_list {
+                    nodes {
+                        full_name
+                    }
+                }
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200
+        assert response.json() == {
+            "data": {
+                "users": {
+                    "nodes": [
+                        {
+                            "id": 1,
+                            "name": "cleopaws",
+                            "repos_list": {
+                                "nodes": [{"full_name": "cleopaws/dogspotter"}]
+                            },
+                        },
+                        {
+                            "id": 2,
+                            "name": "simonw",
+                            "repos_list": {
+                                "nodes": [
+                                    {"full_name": "simonw/datasette"},
+                                    {"full_name": "simonw/private"},
+                                ]
+                            },
+                        },
+                    ]
+                }
+            }
+        }

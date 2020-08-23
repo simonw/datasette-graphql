@@ -6,6 +6,10 @@ from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
+import time
+
+DEFAULT_TIME_LIMIT_MS = 1000
+DEFAULT_NUM_QUERIES_LIMIT = 100
 
 
 async def post_body(request):
@@ -83,11 +87,21 @@ async def view_graphql(request, datasette):
             headers=CORS_HEADERS if datasette.cors else {},
         )
 
+    config = datasette.plugin_config("datasette-graphql") or {}
+    context = {
+        "time_started": time.monotonic(),
+        "time_limit_ms": config.get("time_limit_ms") or DEFAULT_TIME_LIMIT_MS,
+        "num_queries_executed": 0,
+        "num_queries_limit": config.get("num_queries_limit")
+        or DEFAULT_NUM_QUERIES_LIMIT,
+    }
+
     result = await graphql(
         schema,
         query,
         operation_name=operation_name,
         variable_values=variables,
+        context_value=context,
         executor=AsyncioExecutor(),
         return_promise=True,
     )

@@ -8,6 +8,7 @@ import json
 import urllib
 import re
 import sqlite_utils
+import time
 import wrapt
 
 TableMetadata = namedtuple(
@@ -491,6 +492,25 @@ def make_table_resolver(
         path_with_query_string = "/{}/{}.json?{}".format(
             database_name, table_name, urllib.parse.urlencode(qs)
         )
+
+        context = info.context
+        if context and "time_started" in context:
+            elapsed_ms = (time.monotonic() - context["time_started"]) * 1000
+            if context["time_limit_ms"] and elapsed_ms > context["time_limit_ms"]:
+                assert False, "Time limit exceeded: {:.2f}ms > {}ms - {}".format(
+                    elapsed_ms, context["time_limit_ms"], path_with_query_string
+                )
+            context["num_queries_executed"] += 1
+            if (
+                context["num_queries_limit"]
+                and context["num_queries_executed"] > context["num_queries_limit"]
+            ):
+                assert False, "Query limit exceeded: {} > {} - {}".format(
+                    context["num_queries_executed"],
+                    context["num_queries_limit"],
+                    path_with_query_string,
+                )
+
         request = Request.fake(path_with_query_string)
 
         view = TableView(DatasetteSpecialConfig(datasette))
