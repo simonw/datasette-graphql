@@ -567,3 +567,58 @@ async def test_num_queries_limit(db_path):
                 }
             ],
         }
+
+
+@pytest.mark.asyncio
+async def test_time_limits_0(db_path):
+    ds = Datasette(
+        [db_path],
+        metadata={
+            "plugins": {
+                "datasette-graphql": {"num_queries_limit": 0, "time_limit_ms": 0}
+            }
+        },
+    )
+    query = """
+    {
+        users {
+            nodes {
+                id
+                name
+                repos_list {
+                    nodes {
+                        full_name
+                    }
+                }
+            }
+        }
+    }
+    """
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        response = await client.post("http://localhost/graphql", json={"query": query})
+        assert response.status_code == 200
+        assert response.json() == {
+            "data": {
+                "users": {
+                    "nodes": [
+                        {
+                            "id": 1,
+                            "name": "cleopaws",
+                            "repos_list": {
+                                "nodes": [{"full_name": "cleopaws/dogspotter"}]
+                            },
+                        },
+                        {
+                            "id": 2,
+                            "name": "simonw",
+                            "repos_list": {
+                                "nodes": [
+                                    {"full_name": "simonw/datasette"},
+                                    {"full_name": "simonw/private"},
+                                ]
+                            },
+                        },
+                    ]
+                }
+            }
+        }
