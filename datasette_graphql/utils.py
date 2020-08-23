@@ -373,21 +373,22 @@ def make_table_node_class(
     for fk in meta.fks_back:
         filter_class = table_filters[fk.table]
         if fk_table_counts[fk.table] > 1:
-            field_name = "{}_by_{}_list".format(table_metadata[fk.table].graphql_name, table_metadata[fk.table].graphql_columns[fk.column])
-            field_description = "Related rows from the {} table (by {})".format(fk.table, fk.column)
+            field_name = "{}_by_{}_list".format(
+                table_metadata[fk.table].graphql_name,
+                table_metadata[fk.table].graphql_columns[fk.column],
+            )
+            field_description = "Related rows from the {} table (by {})".format(
+                fk.table, fk.column
+            )
         else:
             field_name = "{}_list".format(table_metadata[fk.table].graphql_name)
             field_description = "Related rows from the {} table".format(fk.table)
-        table_dict[
-            field_name
-        ] = graphene.Field(
+        table_dict[field_name] = graphene.Field(
             make_table_collection_getter(table_collection_classes, fk.table),
             **table_collection_kwargs[fk.table],
             description=field_description
         )
-        table_dict[
-            "resolve_{}".format(field_name)
-        ] = make_table_resolver(
+        table_dict["resolve_{}".format(field_name)] = make_table_resolver(
             datasette, db.name, fk.table, table_classes, table_metadata, related_fk=fk,
         )
 

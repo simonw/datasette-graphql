@@ -65,13 +65,21 @@ def build_database(db):
         foreign_keys=(("owner", "users"), ("license", "licenses")),
     ).enable_fts(["full_name"], fts_version="FTS4")
     db["issues"].insert_all(
-        [{"id": 111, "title": "Not enough dog stuff", "user": 1, "repo": 1, "updated_by": 2}],
+        [
+            {
+                "id": 111,
+                "title": "Not enough dog stuff",
+                "user": 1,
+                "repo": 1,
+                "updated_by": 2,
+            }
+        ],
         pk="id",
         foreign_keys=(
             ("user", "users", "id"),
             ("repo", "repos", "id"),
             ("updated_by", "users", "id"),
-        )
+        ),
     )
     db["1_images"].insert({"path": "1x1.gif", "content": GIF_1x1}, pk="path")
     # https://github.com/simonw/datasette-graphql/issues/48
