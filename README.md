@@ -307,6 +307,27 @@ This plugin obeys the `--cors` option passed to the `datasette` command-line too
     access-control-allow-method: POST
     access-control-allow-origin: *
 
+### Execution limits
+
+The plugins implements two limits by default:
+
+- The total time spent executing all of the underlying SQL queries that make up the GraphQL execution must not exceed 1000ms (one second)
+- The total number of SQL table queries executed as a result of nested GraphQL fields must not exceed 100
+
+These limits can be customized using the `num_queries_limit` and `time_limit_ms` plugin configuration settings, for example in `metadata.json`:
+
+```json
+{
+    "plugins": {
+        "datasette-graphql": {
+            "num_queries_limit": 200,
+            "time_limit_ms": 5000
+        }
+    }
+}
+```
+Setting these to `0` will disable the limit checks entirely.
+
 ## The graphql() template function
 
 The plugin also makes a Jinja template function available called `graphql()`. You can use that function in your Datasette [custom templates](https://docs.datasette.io/en/stable/custom_templates.html#custom-templates) like so:
