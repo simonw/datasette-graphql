@@ -37,7 +37,7 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
 
 Install this plugin in the same environment as Datasette.
 
-    $ pip install datasette-graphql
+    $ datasette install datasette-graphql
 
 ## Usage
 
