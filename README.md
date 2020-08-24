@@ -104,14 +104,14 @@ If a column is a foreign key to another table, you can request columns from the 
 
 If another table has a foreign key back to the table you are accessing, you can fetch rows from that related table.
 
-Consider a `users` table which is related to `repos` - a repo has a foreign key back to the user that owns the repository. The `users` object type will have a `repos_list` field which can be used to access those related repos:
+Consider a `users` table which is related to `repos` - a repo has a foreign key back to the user that owns the repository. The `users` object type will have a `repos_by_owner_list` field which can be used to access those related repos:
 
 ```graphql
 {
   users(first: 1, search:"simonw") {
     nodes {
       name
-      repos_list(first: 5) {
+      repos_by_owner_list(first: 5) {
         totalCount
         nodes {
           full_name
@@ -148,7 +148,7 @@ These same filters can be used on nested relationships, like so:
 {
   users_row(id: 9599) {
     name
-    repos_list(filter: {name: {startswith: "datasette-"}}) {
+    repos_by_owner_list(filter: {name: {startswith: "datasette-"}}) {
       totalCount
       nodes {
         full_name
