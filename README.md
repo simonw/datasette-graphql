@@ -62,6 +62,7 @@ Individual tables (and SQL views) can be queried like this:
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20id%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20description%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 In this example query the underlying database table is called `repos` and its columns include `id`, `full_name` and `description`.
 
@@ -78,6 +79,7 @@ If you only want to fetch a single record - for example if you want to fetch a r
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos_row%28id%3A%20107914493%29%20%7B%0A%20%20%20%20id%0A%20%20%20%20full_name%0A%20%20%20%20description%0A%20%20%7D%0A%7D%0A)
 
 The `tablename_row` field accepts the primary key column (or columns) as arguments. It also supports the same `filter:`, `search:`, `sort:` and `sort_desc:` arguments as the `tablename` field, described below.
 
@@ -99,6 +101,7 @@ If a column is a foreign key to another table, you can request columns from the 
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20id%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20owner%20%7B%0A%20%20%20%20%20%20%20%20id%0A%20%20%20%20%20%20%20%20login%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 ### Accessing related objects
 
@@ -108,7 +111,7 @@ Consider a `users` table which is related to `repos` - a repo has a foreign key 
 
 ```graphql
 {
-  users(first: 1, search:"simonw") {
+  users(first: 1, search: "simonw") {
     nodes {
       name
       repos_by_owner_list(first: 5) {
@@ -121,6 +124,8 @@ Consider a `users` table which is related to `repos` - a repo has a foreign key 
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20users%28first%3A%201%2C%20search%3A%20%22simonw%22%29%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20name%0A%20%20%20%20%20%20repos_by_owner_list%28first%3A%205%29%20%7B%0A%20%20%20%20%20%20%20%20totalCount%0A%20%20%20%20%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
+
 
 ### Filtering tables
 
@@ -139,6 +144,7 @@ You can filter the rows returned for a specific table using the `filter:` argume
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28filter%3A%20%7Blicense%3A%20%7Beq%3A%20%22apache-2.0%22%7D%2C%20stargazers_count%3A%20%7Bgt%3A%2010%7D%7D%29%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20stargazers_count%0A%20%20%20%20%20%20license%20%7B%0A%20%20%20%20%20%20%20%20key%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 See [table filters examples](https://github.com/simonw/datasette-graphql/blob/main/examples/filters.md) for more operations, and [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation for details of how those operations work.
 
@@ -157,6 +163,8 @@ These same filters can be used on nested relationships, like so:
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20users_row%28id%3A%209599%29%20%7B%0A%20%20%20%20name%0A%20%20%20%20repos_by_owner_list%28filter%3A%20%7Bname%3A%20%7Bstartswith%3A%20%22datasette-%22%7D%7D%29%20%7B%0A%20%20%20%20%20%20totalCount%0A%20%20%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
+
 
 The `where:` argument can be used as an alternative to `filter:` when the thing you are expressing is too complex to be modeled using a filter expression. It accepts a string fragment of SQL that will be included in the `WHERE` clause of the SQL query.
 
@@ -170,6 +178,7 @@ The `where:` argument can be used as an alternative to `filter:` when the thing 
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28where%3A%20%22name%3D%27sqlite-utils%27%20or%20name%20like%20%27datasette-%25%27%22%29%20%7B%0A%20%20%20%20totalCount%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 ### Sorting
 
@@ -185,6 +194,7 @@ You can set a sort order for results from a table using the `sort:` or `sort_des
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28sort_desc%3A%20stargazers_count%29%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20stargazers_count%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 ### Pagination
 
@@ -208,6 +218,7 @@ By default the first 10 rows will be returned. You can control this using the `f
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28first%3A%2020%29%20%7B%0A%20%20%20%20totalCount%0A%20%20%20%20pageInfo%20%7B%0A%20%20%20%20%20%20hasNextPage%0A%20%20%20%20%20%20endCursor%0A%20%20%20%20%7D%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20stargazers_count%0A%20%20%20%20%20%20license%20%7B%0A%20%20%20%20%20%20%20%20key%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 The `totalCount` field returns the total number of records that match the query.
 
@@ -231,6 +242,7 @@ Requesting the `pageInfo.endCursor` field provides you with the value you need t
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28first%3A%2020%2C%20after%3A%20%22134874019%22%29%20%7B%0A%20%20%20%20totalCount%0A%20%20%20%20pageInfo%20%7B%0A%20%20%20%20%20%20hasNextPage%0A%20%20%20%20%20%20endCursor%0A%20%20%20%20%7D%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20stargazers_count%0A%20%20%20%20%20%20license%20%7B%0A%20%20%20%20%20%20%20%20key%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 The `hasNextPage` field tells you if there are any more records.
 
@@ -253,6 +265,7 @@ If a table has been configured to use SQLite full-text search you can execute se
   }
 }
 ```
+[Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28search%3A%20%22datasette%22%29%20%7B%0A%20%20%20%20totalCount%0A%20%20%20%20pageInfo%20%7B%0A%20%20%20%20%20%20hasNextPage%0A%20%20%20%20%20%20endCursor%0A%20%20%20%20%7D%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20description%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
 The [sqlite-utils](https://sqlite-utils.readthedocs.io/) Python library and CLI tool can be used to add full-text search to an existing database table.
 

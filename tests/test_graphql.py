@@ -7,6 +7,10 @@ import re
 import httpx
 from .fixtures import ds, db_path, db_path2
 
+graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
+json_re = re.compile(r"```json\n(.*?)```", re.DOTALL)
+variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
+
 
 @pytest.mark.asyncio
 async def test_plugin_is_installed():
@@ -104,11 +108,6 @@ async def test_graphql_errors(ds, query, expected_errors):
         response = await client.post("http://localhost/graphql", json={"query": query})
         assert response.status_code == 500
         assert response.json()["errors"] == expected_errors
-
-
-graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
-json_re = re.compile(r"```json\n(.*?)```", re.DOTALL)
-variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
 
 
 @pytest.mark.asyncio

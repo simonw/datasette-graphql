@@ -8,53 +8,64 @@ link_re = re.compile(r"\[Try this query]\((.*?)\)")
 
 
 @pytest.mark.parametrize(
-    "path", (pathlib.Path(__file__).parent.parent / "examples").glob("*.md")
+    "path",
+    list((pathlib.Path(__file__).parent.parent / "examples").glob("*.md"))
+    + [pathlib.Path(__file__).parent.parent / "README.md"],
 )
 def test_examples_link_to_live_demo(request, path):
     should_rewrite = request.config.getoption("--rewrite-examples")
+    is_readme = path.name == "README.md"
     content = path.read_text()
-    query = graphql_re.search(content)[1]
-    try:
-        variables = variables_re.search(content)[1]
-    except TypeError:
-        variables = None
-    args = {"query": query}
-    if variables:
-        args["variables"] = variables
-    expected_url = (
-        "https://datasette-graphql-demo.datasette.io/graphql/fixtures?"
-        + urllib.parse.urlencode(args, quote_via=urllib.parse.quote)
-    )
-    # Is the link there at all? If not we will need to add it
-    link_match = link_re.search(content)
-    if link_match is None:
-        if should_rewrite:
-            ideal_content = graphql_re.sub(
-                "```graphql\n{}\n```\n[Try this query]({})\n".format(
-                    query.strip(), expected_url
-                ),
-                content,
-            )
-            path.write_text(ideal_content)
-            return
+    ideal_content = content
+    variables = None
+    if not is_readme:
+        try:
+            variables = variables_re.search(content)[1]
+        except TypeError:
+            pass
+
+    for match in graphql_re.finditer(content):
+        query = match.group(1)
+        start = match.start()
+        end = match.end()
+        args = {"query": query}
+        if variables:
+            args["variables"] = variables
+        expected_url = "https://datasette-graphql-demo.datasette.io/graphql{}?{}".format(
+            "" if is_readme else "/fixtures",
+            urllib.parse.urlencode(args, quote_via=urllib.parse.quote),
+        )
+        fixed_fragment = "```graphql\n{}\n```\n[Try this query]({})\n".format(
+            query.strip(), expected_url
+        )
+        # Check for the `[Try this query ...]` that follows this one character later
+        try_this_match = link_re.search(content, start)
+        if try_this_match is None or try_this_match.start() - end != 1:
+            if should_rewrite:
+                query_fix_re = re.compile(r"```graphql\n{}\n```\n".format(re.escape(query.strip())))
+                ideal_content = query_fix_re.sub(fixed_fragment, ideal_content)
+            else:
+                assert (
+                    False
+                ), "{}: [Try this query] link should follow {}\n\nFix with pytest --rewrite-examples'".format(
+                    path, query
+                )
         else:
-            assert (
-                link_match is not None
-            ), "'Try this query' link is missing from {}, run 'pytest --rewrite-examples' to fix it".format(
-                path
-            )
-    # Does the link contain the correct URL?
-    link_url = link_match[1]
-    if link_url != expected_url:
-        if should_rewrite:
-            ideal_content = link_re.sub(
-                "[Try this query]({})".format(expected_url), content
-            )
-            path.write_text(ideal_content)
-            return
-        else:
-            assert (
-                link_url == expected_url
-            ), "'Try this query' link is incorrect in {}, run 'pytest --rewrite-examples' to fix it".format(
-                path
-            )
+            # The link is there! But does it have the correct URL?
+            if expected_url != try_this_match.group(1):
+                if should_rewrite:
+                    query_link_fix_re = re.compile(
+                        r"```graphql\n{}\n```\n\[Try this query]\((.*?)\)".format(
+                            re.escape(query.strip())
+                        )
+                    )
+                    ideal_content = query_link_fix_re.sub(fixed_fragment, ideal_content)
+                else:
+                    assert (
+                        False
+                    ), "{}: Expected URL {} for {}\n\nFix with pytest --rewrite-examples'".format(
+                        path, expected_url, query
+                    )
+
+    if should_rewrite and ideal_content != content:
+        path.write_text(ideal_content)
