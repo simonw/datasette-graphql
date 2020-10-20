@@ -31,9 +31,11 @@ def test_examples_link_to_live_demo(request, path):
         args = {"query": query}
         if variables:
             args["variables"] = variables
-        expected_url = "https://datasette-graphql-demo.datasette.io/graphql{}?{}".format(
-            "" if is_readme else "/fixtures",
-            urllib.parse.urlencode(args, quote_via=urllib.parse.quote),
+        expected_url = (
+            "https://datasette-graphql-demo.datasette.io/graphql{}?{}".format(
+                "" if is_readme else "/fixtures",
+                urllib.parse.urlencode(args, quote_via=urllib.parse.quote),
+            )
         )
         fixed_fragment = "```graphql\n{}\n```\n[Try this query]({})\n".format(
             query.strip(), expected_url
@@ -42,7 +44,9 @@ def test_examples_link_to_live_demo(request, path):
         try_this_match = link_re.search(content, start)
         if try_this_match is None or try_this_match.start() - end != 1:
             if should_rewrite:
-                query_fix_re = re.compile(r"```graphql\n{}\n```\n".format(re.escape(query.strip())))
+                query_fix_re = re.compile(
+                    r"```graphql\n{}\n```\n".format(re.escape(query.strip()))
+                )
                 ideal_content = query_fix_re.sub(fixed_fragment, ideal_content)
             else:
                 assert (

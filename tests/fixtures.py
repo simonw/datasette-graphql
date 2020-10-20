@@ -28,7 +28,10 @@ def build_database(db):
         pk="id",
     )
     db["licenses"].insert_all(
-        [{"$key": "mit", "name": "MIT"}, {"$key": "apache2", "name": "Apache 2"},],
+        [
+            {"$key": "mit", "name": "MIT"},
+            {"$key": "apache2", "name": "Apache 2"},
+        ],
         pk="$key",
     )
     db["type_compound_key"].insert_all(

@@ -125,7 +125,10 @@ async def test_graphql_examples(ds, path):
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.post(
             "http://localhost/graphql",
-            json={"query": query, "variables": json.loads(variables),},
+            json={
+                "query": query,
+                "variables": json.loads(variables),
+            },
         )
         assert response.status_code == 200, response.json()
         if response.json()["data"] != expected:
@@ -340,7 +343,10 @@ async def test_graphql_output_schema(ds):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("cors_enabled", [True, False])
 async def test_cors_headers(db_path, cors_enabled):
-    ds = Datasette([db_path], cors=cors_enabled,)
+    ds = Datasette(
+        [db_path],
+        cors=cors_enabled,
+    )
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.options("http://localhost/graphql")
         assert response.status_code == 200

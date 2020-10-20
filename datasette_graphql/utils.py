@@ -215,7 +215,9 @@ async def schema_for_database(datasette, database=None):
         )
 
     Query = type(
-        "Query", (graphene.ObjectType,), {key: value for key, value in to_add},
+        "Query",
+        (graphene.ObjectType,),
+        {key: value for key, value in to_add},
     )
     return graphene.Schema(
         query=Query,
@@ -392,7 +394,12 @@ def make_table_node_class(
             description=field_description
         )
         table_dict["resolve_{}".format(field_name)] = make_table_resolver(
-            datasette, db.name, fk.table, table_classes, table_metadata, related_fk=fk,
+            datasette,
+            db.name,
+            fk.table,
+            table_classes,
+            table_metadata,
+            related_fk=fk,
         )
 
     table_dict["from_row"] = classmethod(
@@ -563,8 +570,8 @@ def make_table_collection_getter(table_collection_classes, table):
 
 
 def path_from_row_pks(row, pks, use_rowid, quote=True):
-    """ Generate an optionally URL-quoted unique identifier
-        for a row from its primary keys."""
+    """Generate an optionally URL-quoted unique identifier
+    for a row from its primary keys."""
     if use_rowid:
         bits = [row.rowid]
     else:

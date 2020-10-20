@@ -57,7 +57,11 @@ async def view_graphql(request, datasette):
     if not body and "text/html" in request.headers.get("accept", ""):
         return Response.html(
             await datasette.render_template(
-                "graphiql.html", {"database": database,}, request=request
+                "graphiql.html",
+                {
+                    "database": database,
+                },
+                request=request,
             ),
             headers=CORS_HEADERS if datasette.cors else {},
         )
