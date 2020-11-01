@@ -23,6 +23,16 @@ async def test_plugin_is_installed():
 
 
 @pytest.mark.asyncio
+async def test_menu():
+    ds = Datasette([], memory=True)
+    app = ds.app()
+    async with httpx.AsyncClient(app=app) as client:
+        response = await client.get("http://localhost/")
+        assert 200 == response.status_code
+        assert '<li><a href="/graphql">GraphQL API</a></li>' in response.text
+
+
+@pytest.mark.asyncio
 async def test_graphiql():
     app = Datasette([], memory=True).app()
     async with httpx.AsyncClient(app=app) as client:

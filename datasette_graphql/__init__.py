@@ -121,6 +121,13 @@ async def view_graphql(request, datasette):
 
 
 @hookimpl
+def menu_links(datasette, actor):
+    return [
+        {"href": datasette.urls.path("/graphql"), "label": "GraphQL API"},
+    ]
+
+
+@hookimpl
 def register_routes():
     return [
         (r"^/graphql/(?P<database>[^/]+)\.graphql$", view_graphql_schema),
