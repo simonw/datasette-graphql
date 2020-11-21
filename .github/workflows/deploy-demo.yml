@@ -65,4 +65,5 @@ jobs:
           -m metadata.json \
           --install=https://github.com/simonw/datasette-graphql/archive/$GITHUB_SHA.zip \
           --install=datasette-schema-versions \
-          --service datasette-graphql-demo
+          --service datasette-graphql-demo \
+          --brainch main
