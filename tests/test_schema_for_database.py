@@ -8,7 +8,7 @@ from .fixtures import ds, db_path
 
 @pytest.mark.asyncio
 async def test_schema(ds):
-    schema = await schema_for_database(ds)
+    schema = (await schema_for_database(ds)).schema
 
     query = """{
         users {

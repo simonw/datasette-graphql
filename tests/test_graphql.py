@@ -5,6 +5,8 @@ import pathlib
 import pytest
 import re
 import httpx
+import urllib
+import textwrap
 from .fixtures import ds, db_path, db_path2
 
 graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
@@ -710,3 +712,37 @@ async def test_permissions(db_path, db_path2, metadata, expected):
                 headers={"Accept": "text/html"},
             )
             assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_table_action(db_path):
+    ds = Datasette([db_path])
+    response = await ds.client.get("/test/users")
+    html = response.text
+    prefix = '<li><a href="/graphql?query='
+    assert prefix in html
+    example_query = html.split(prefix)[1].split('">')[0]
+    assert (
+        urllib.parse.unquote(example_query)
+        == textwrap.dedent(
+            """
+    {
+      users {
+        totalCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          name
+          points
+          score
+          joined
+          dog_award
+        }
+      }
+    }
+    """
+        ).strip()
+    )

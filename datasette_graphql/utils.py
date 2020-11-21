@@ -8,6 +8,7 @@ import json
 import urllib
 import re
 import sqlite_utils
+import textwrap
 import time
 import wrapt
 
@@ -58,6 +59,13 @@ types = {
 class PageInfo(graphene.ObjectType):
     endCursor = graphene.String()
     hasNextPage = graphene.Boolean()
+
+
+class DatabaseSchema:
+    def __init__(self, schema, table_classes, table_collection_classes):
+        self.schema = schema
+        self.table_classes = table_classes
+        self.table_collection_classes = table_collection_classes
 
 
 # cache keys are (database, schema_version) tuples
@@ -219,11 +227,15 @@ async def schema_for_database(datasette, database=None):
         (graphene.ObjectType,),
         {key: value for key, value in to_add},
     )
-    return graphene.Schema(
-        query=Query,
-        auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
-            "auto_camelcase", False
+    return DatabaseSchema(
+        schema=graphene.Schema(
+            query=Query,
+            auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
+                "auto_camelcase", False
+            ),
         ),
+        table_classes=table_classes,
+        table_collection_classes=table_collection_classes,
     )
 
 
@@ -350,9 +362,11 @@ def make_table_node_class(
         json_columns = table_plugin_config["json_columns"]
 
     # Create a node class for this table
+    plain_columns = []
     table_dict = {}
     if meta.pks == ["rowid"]:
         table_dict["rowid"] = graphene.Int()
+        plain_columns.append("rowid")
 
     for colname, coltype in meta.columns.items():
         graphql_name = meta.graphql_columns[colname]
@@ -365,6 +379,7 @@ def make_table_node_class(
                 db, table, table_classes, fk
             )
         else:
+            plain_columns.append(graphql_name)
             if colname in json_columns:
                 table_dict[graphql_name] = generic.GenericScalar()
                 table_dict["resolve_{}".format(graphql_name)] = resolve_generic
@@ -406,6 +421,28 @@ def make_table_node_class(
         lambda cls, row: cls(
             **dict([(meta.graphql_columns.get(k, k), v) for k, v in dict(row).items()])
         )
+    )
+
+    table_dict["example_query"] = (
+        textwrap.dedent(
+            """
+    {
+      TABLE {
+        totalCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+    COLUMNS
+        }
+      }
+    }
+    """
+        )
+        .strip()
+        .replace("TABLE", meta.graphql_name)
+        .replace("COLUMNS", "\n".join("      {}".format(c) for c in plain_columns))
     )
 
     return type(meta.graphql_name, (graphene.ObjectType,), table_dict)

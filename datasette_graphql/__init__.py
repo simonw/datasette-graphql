@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound, Forbidden
@@ -6,6 +7,7 @@ from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
+import urllib
 import time
 
 DEFAULT_TIME_LIMIT_MS = 1000
@@ -32,7 +34,7 @@ async def view_graphql_schema(request, datasette):
         raise NotFound("Database does not exist")
     await check_permissions(request, datasette, db.name)
     schema = await schema_for_database_via_cache(datasette, database=database)
-    return Response.text(print_schema(schema))
+    return Response.text(print_schema(schema.schema))
 
 
 CORS_HEADERS = {
@@ -69,7 +71,7 @@ async def view_graphql(request, datasette):
             headers=CORS_HEADERS if datasette.cors else {},
         )
 
-    schema = await schema_for_database_via_cache(datasette, database=database)
+    schema = (await schema_for_database_via_cache(datasette, database=database)).schema
 
     if request.args.get("schema"):
         return Response.text(print_schema(schema))
@@ -166,7 +168,9 @@ def register_routes():
 @hookimpl
 def extra_template_vars(datasette):
     async def graphql_template_tag(query, database=None, variables=None):
-        schema = await schema_for_database_via_cache(datasette, database=database)
+        schema = (
+            await schema_for_database_via_cache(datasette, database=database)
+        ).schema
         result = await graphql(
             schema,
             query,
@@ -198,3 +202,42 @@ def startup(datasette):
                         database_name
                     )
                 )
+
+
+@hookimpl
+def table_actions(datasette, actor, database, table):
+    async def inner():
+        if len(datasette.databases) > 1:
+            graphql_path = datasette.urls.path("/graphql/{}".format(database))
+        else:
+            graphql_path = datasette.urls.path("/graphql")
+        db_schema = await schema_for_database_via_cache(datasette, database=database)
+        example_query = db_schema.table_classes[table].example_query
+        return [
+            {
+                "href": "{}?query={}".format(
+                    graphql_path, urllib.parse.quote(example_query)
+                ),
+                "label": "GraphQL API for {}".format(table),
+            }
+        ]
+
+    return inner
+
+
+@hookimpl
+def database_actions(datasette, actor, database):
+    if len(datasette.databases) > 1:
+        return [
+            {
+                "href": datasette.urls.path("/graphql/{}".format(database)),
+                "label": "GraphQL API for {}".format(database),
+            }
+        ]
+    else:
+        return [
+            {
+                "href": datasette.urls.path("/graphql"),
+                "label": "GraphQL API",
+            }
+        ]
