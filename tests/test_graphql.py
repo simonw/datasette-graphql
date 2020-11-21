@@ -715,6 +715,14 @@ async def test_permissions(db_path, db_path2, metadata, expected):
 
 
 @pytest.mark.asyncio
+async def test_no_error_on_empty_schema():
+    # https://github.com/simonw/datasette-graphql/issues/64
+    ds = Datasette([], memory=True)
+    response = await ds.client.get("/graphql", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_table_action(db_path):
     ds = Datasette([db_path])
     response = await ds.client.get("/test/users")

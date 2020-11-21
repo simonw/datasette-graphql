@@ -222,6 +222,11 @@ async def schema_for_database(datasette, database=None):
             )
         )
 
+    if not to_add:
+        # Empty schema throws a 500 error, so add something here
+        to_add.append(("empty", graphene.String()))
+        to_add.append(("resolve_empty", lambda a, b: "schema"))
+
     Query = type(
         "Query",
         (graphene.ObjectType,),
