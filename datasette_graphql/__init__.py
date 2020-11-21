@@ -1,6 +1,6 @@
 from click import ClickException
 from datasette import hookimpl
-from datasette.utils.asgi import Response, NotFound
+from datasette.utils.asgi import Response, NotFound, Forbidden
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql.error import format_error
 from graphql import graphql, print_schema
@@ -27,9 +27,10 @@ async def post_body(request):
 async def view_graphql_schema(request, datasette):
     database = request.url_vars.get("database")
     try:
-        datasette.get_database(database)
+        db = datasette.get_database(database)
     except KeyError:
         raise NotFound("Database does not exist")
+    await check_permissions(request, datasette, db.name)
     schema = await schema_for_database_via_cache(datasette, database=database)
     return Response.text(print_schema(schema))
 
@@ -50,9 +51,11 @@ async def view_graphql(request, datasette):
     database = request.url_vars.get("database")
 
     try:
-        datasette.get_database(database)
+        db = datasette.get_database(database)
     except KeyError:
         raise NotFound("Database does not exist")
+
+    await check_permissions(request, datasette, db.name)
 
     if not body and "text/html" in request.headers.get("accept", ""):
         return Response.html(
@@ -118,6 +121,30 @@ async def view_graphql(request, datasette):
         status=200 if not result.errors else 500,
         headers=CORS_HEADERS if datasette.cors else {},
     )
+
+
+async def check_permissions(request, datasette, database):
+    # First check database permission
+    ok = await datasette.permission_allowed(
+        request.actor,
+        "view-database",
+        resource=database,
+        default=None,
+    )
+    if ok is not None:
+        if ok:
+            return
+        else:
+            raise Forbidden("view-database")
+
+    # Fall back to checking instance permission
+    ok2 = await datasette.permission_allowed(
+        request.actor,
+        "view-instance",
+        default=None,
+    )
+    if ok2 is False:
+        raise Forbidden("view-instance")
 
 
 @hookimpl

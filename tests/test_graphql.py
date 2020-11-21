@@ -637,3 +637,76 @@ async def test_time_limits_0(db_path):
                 }
             }
         }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "metadata,expected",
+    [
+        (
+            # Disallow all access to both authenticated and anonymous users
+            {"allow": False},
+            [
+                # Authenticated?, Path, Expected status code
+                (False, "/graphql", 403),
+                (False, "/graphql/test", 403),
+                (False, "/graphql/test.graphql", 403),
+                (False, "/graphql/test2", 403),
+                (False, "/graphql/test2.graphql", 403),
+                (True, "/graphql", 403),
+                (True, "/graphql/test", 403),
+                (True, "/graphql/test.graphql", 403),
+                (True, "/graphql/test2", 403),
+                (True, "/graphql/test2.graphql", 403),
+            ],
+        ),
+        (
+            # Allow access to test, protect test2
+            {"databases": {"test2": {"allow": {"id": "user"}}}},
+            [
+                # Authenticated?, Path, Expected status code
+                (False, "/graphql", 200),
+                (False, "/graphql/test", 200),
+                (False, "/graphql/test.graphql", 200),
+                (False, "/graphql/test2", 403),
+                (False, "/graphql/test2.graphql", 403),
+                (True, "/graphql", 200),
+                (True, "/graphql/test", 200),
+                (True, "/graphql/test.graphql", 200),
+                (True, "/graphql/test2", 200),
+                (True, "/graphql/test2.graphql", 200),
+            ],
+        ),
+        (
+            # Forbid database instance access, but allow access to test2
+            {"allow": False, "databases": {"test2": {"allow": True}}},
+            [
+                # Authenticated?, Path, Expected status code
+                (False, "/graphql", 403),
+                (False, "/graphql/test", 403),
+                (False, "/graphql/test.graphql", 403),
+                (False, "/graphql/test2", 200),
+                (False, "/graphql/test2.graphql", 200),
+                (True, "/graphql", 403),
+                (True, "/graphql/test", 403),
+                (True, "/graphql/test.graphql", 403),
+                (True, "/graphql/test2", 200),
+                (True, "/graphql/test2.graphql", 200),
+            ],
+        ),
+    ],
+)
+async def test_permissions(db_path, db_path2, metadata, expected):
+    ds = Datasette([db_path, db_path2], metadata=metadata)
+    async with httpx.AsyncClient(app=ds.app()) as client:
+        for authenticated, path, expected_status in expected:
+            ds._permission_checks.clear()
+            cookies = {}
+            if authenticated:
+                cookies["ds_actor"] = ds.sign({"a": {"id": "user"}}, "actor")
+            response = await client.get(
+                "http://localhost" + path,
+                cookies=cookies,
+                headers={"Accept": "text/html"},
+            )
+            assert response.status_code == expected_status
