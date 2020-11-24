@@ -514,7 +514,7 @@ async def test_configured_fts_search_for_view(db_path):
 @pytest.mark.asyncio
 async def test_time_limit_ms(db_path):
     ds = Datasette(
-        [db_path], metadata={"plugins": {"datasette-graphql": {"time_limit_ms": 1}}}
+        [db_path], metadata={"plugins": {"datasette-graphql": {"time_limit_ms": 0.1}}}
     )
     query = """
     {
@@ -534,7 +534,7 @@ async def test_time_limit_ms(db_path):
         assert len(response_json["errors"]) == 1
         assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
         assert response_json["errors"][0]["message"].endswith(
-            " > 1ms - /test/repos.json?_size=10&_search=dogspotter"
+            " > 0.1ms - /test/repos.json?_size=10&_search=dogspotter"
         )
 
 
