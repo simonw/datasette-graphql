@@ -454,10 +454,17 @@ def make_table_node_class(
 
 
 class DatasetteSpecialConfig(wrapt.ObjectProxy):
+    _overrides = {"suggest_facets": False}
+
     def config(self, key):
-        if key == "suggest_facets":
-            return False
+        if key in self._overrides:
+            return self._overrides[key]
         return self.__wrapped__.config(key)
+
+    def setting(self, key):
+        if key in self._overrides:
+            return self._overrides[key]
+        return self.__wrapped__.setting(key)
 
 
 def make_table_resolver(
