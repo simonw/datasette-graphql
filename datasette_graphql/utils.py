@@ -535,7 +535,7 @@ def make_table_resolver(
             for column_name, operations in filter_.items():
                 for operation_name, value in operations.items():
                     if isinstance(value, list):
-                        value = ",".join(value)
+                        value = ",".join(map(str, value))
                     pairs.append(
                         [
                             "{}__{}".format(
