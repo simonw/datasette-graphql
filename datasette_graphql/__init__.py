@@ -212,7 +212,7 @@ def table_actions(datasette, actor, database, table):
         else:
             graphql_path = datasette.urls.path("/graphql")
         db_schema = await schema_for_database_via_cache(datasette, database=database)
-        example_query = db_schema.table_classes[table].example_query
+        example_query = await db_schema.table_classes[table].example_query()
         return [
             {
                 "href": "{}?query={}".format(

@@ -725,7 +725,7 @@ async def test_no_error_on_empty_schema():
 @pytest.mark.asyncio
 async def test_table_action(db_path):
     ds = Datasette([db_path])
-    response = await ds.client.get("/test/users")
+    response = await ds.client.get("/test/repos")
     html = response.text
     prefix = '<li><a href="/graphql?query='
     assert prefix in html
@@ -734,23 +734,29 @@ async def test_table_action(db_path):
         urllib.parse.unquote(example_query)
         == textwrap.dedent(
             """
-    {
-      users {
-        totalCount
-        pageInfo {
-          hasNextPage
-          endCursor
+        {
+          repos {
+            totalCount
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              id
+              full_name
+              name
+              tags
+              owner {
+                id
+                name
+              }
+              license {
+                _key
+                name
+              }
+            }
+          }
         }
-        nodes {
-          id
-          name
-          points
-          score
-          joined
-          dog_award
-        }
-      }
-    }
-    """
+        """
         ).strip()
     )

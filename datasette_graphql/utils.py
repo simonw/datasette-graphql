@@ -146,7 +146,7 @@ async def schema_for_database(datasette, database=None):
             continue
 
         # (columns, foreign_keys, fks_back, pks, supports_fts) = table_meta
-        table_node_class = make_table_node_class(
+        table_node_class = await make_table_node_class(
             datasette,
             db,
             table,
@@ -346,7 +346,7 @@ def make_table_filter_class(table, meta):
     )
 
 
-def make_table_node_class(
+async def make_table_node_class(
     datasette,
     db,
     table,
@@ -368,15 +368,20 @@ def make_table_node_class(
 
     # Create a node class for this table
     plain_columns = []
+    fk_columns = []
     table_dict = {}
     if meta.pks == ["rowid"]:
         table_dict["rowid"] = graphene.Int()
         plain_columns.append("rowid")
 
+    columns_to_graphql_names = {}
+
     for colname, coltype in meta.columns.items():
         graphql_name = meta.graphql_columns[colname]
+        columns_to_graphql_names[colname] = graphql_name
         if colname in fks_by_column:
             fk = fks_by_column[colname]
+            fk_columns.append((graphql_name, fk.other_table, fk.other_column))
             table_dict[graphql_name] = graphene.Field(
                 make_table_getter(table_classes, fk.other_table)
             )
@@ -428,27 +433,52 @@ def make_table_node_class(
         )
     )
 
-    table_dict["example_query"] = (
-        textwrap.dedent(
-            """
-    {
-      TABLE {
-        totalCount
-        pageInfo {
-          hasNextPage
-          endCursor
+    table_dict["graphql_name_for_column"] = columns_to_graphql_names.get
+
+    async def example_query():
+        example_query_columns = ["      {}".format(c) for c in plain_columns]
+        # Now add the foreign key columns
+        for graphql_name, other_table, other_column in fk_columns:
+            label_column = await db.label_column_for_table(other_table)
+            # Need to find outthe GraphQL names of other_column (the pk) and
+            # label_column on other_table
+            other_table_obj = table_classes[other_table]
+            example_query_columns.append(
+                "      %s {\n        %s\n%s      }"
+                % (
+                    graphql_name,
+                    other_table_obj.graphql_name_for_column(other_column),
+                    (
+                        "        %s\n"
+                        % other_table_obj.graphql_name_for_column(label_column)
+                    )
+                    if label_column
+                    else "",
+                )
+            )
+        return (
+            textwrap.dedent(
+                """
+        {
+          TABLE {
+            totalCount
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+        COLUMNS
+            }
+          }
         }
-        nodes {
-    COLUMNS
-        }
-      }
-    }
-    """
+        """
+            )
+            .strip()
+            .replace("TABLE", meta.graphql_name)
+            .replace("COLUMNS", "\n".join(example_query_columns))
         )
-        .strip()
-        .replace("TABLE", meta.graphql_name)
-        .replace("COLUMNS", "\n".join("      {}".format(c) for c in plain_columns))
-    )
+
+    table_dict["example_query"] = example_query
 
     return type(meta.graphql_name, (graphene.ObjectType,), table_dict)
 
