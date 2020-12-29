@@ -147,7 +147,7 @@ You can filter the rows returned for a specific table using the `filter:` argume
 ```
 [Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28filter%3A%20%7Blicense%3A%20%7Beq%3A%20%22apache-2.0%22%7D%2C%20stargazers_count%3A%20%7Bgt%3A%2010%7D%7D%29%20%7B%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20stargazers_count%0A%20%20%20%20%20%20license%20%7B%0A%20%20%20%20%20%20%20%20key%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
-See [table filters examples](https://github.com/simonw/datasette-graphql/blob/main/examples/filters.md) for more operations, and [column filter arguments](https://datasette.readthedocs.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation for details of how those operations work.
+See [table filters examples](https://github.com/simonw/datasette-graphql/blob/main/examples/filters.md) for more operations, and [column filter arguments](https://docs.datasette.io/en/stable/json_api.html#column-filter-arguments) in the Datasette documentation for details of how those operations work.
 
 These same filters can be used on nested relationships, like so:
 
@@ -268,7 +268,7 @@ If a table has been configured to use SQLite full-text search you can execute se
 ```
 [Try this query](https://datasette-graphql-demo.datasette.io/graphql?query=%0A%7B%0A%20%20repos%28search%3A%20%22datasette%22%29%20%7B%0A%20%20%20%20totalCount%0A%20%20%20%20pageInfo%20%7B%0A%20%20%20%20%20%20hasNextPage%0A%20%20%20%20%20%20endCursor%0A%20%20%20%20%7D%0A%20%20%20%20nodes%20%7B%0A%20%20%20%20%20%20full_name%0A%20%20%20%20%20%20description%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A)
 
-The [sqlite-utils](https://sqlite-utils.readthedocs.io/) Python library and CLI tool can be used to add full-text search to an existing database table.
+The [sqlite-utils](https://sqlite-utils.datasette.io/) Python library and CLI tool can be used to add full-text search to an existing database table.
 
 ### Columns containing JSON strings
 
