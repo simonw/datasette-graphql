@@ -727,7 +727,7 @@ async def test_table_action(db_path):
     ds = Datasette([db_path])
     response = await ds.client.get("/test/repos")
     html = response.text
-    prefix = '<li><a href="/graphql?query='
+    prefix = '<li><a href="/graphql/test?query='
     assert prefix in html
     example_query = html.split(prefix)[1].split('">')[0]
     assert (

@@ -207,10 +207,7 @@ def startup(datasette):
 @hookimpl
 def table_actions(datasette, actor, database, table):
     async def inner():
-        if len(datasette.databases) > 1:
-            graphql_path = datasette.urls.path("/graphql/{}".format(database))
-        else:
-            graphql_path = datasette.urls.path("/graphql")
+        graphql_path = datasette.urls.path("/graphql/{}".format(database))
         db_schema = await schema_for_database_via_cache(datasette, database=database)
         example_query = await db_schema.table_classes[table].example_query()
         return [
