@@ -28,7 +28,7 @@ async def test_schema_caching(mock_schema_for_database, tmp_path_factory):
 
     # The first hit should call schema_for_database
     assert not mock_schema_for_database.called
-    ds = Datasette([db_path])
+    ds = Datasette([str(db_path)])
     async with httpx.AsyncClient(app=ds.app()) as client:
         response = await client.get("http://localhost/graphql/schema.graphql")
         assert response.status_code == 200

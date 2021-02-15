@@ -290,7 +290,7 @@ async def test_graphql_multiple_databases(db_path, db_path2):
 async def test_graphql_json_columns(db_path):
     _schema_cache.clear()
     ds = Datasette(
-        [db_path],
+        [str(db_path)],
         metadata={
             "databases": {
                 "test": {
@@ -356,7 +356,7 @@ async def test_graphql_output_schema(ds):
 @pytest.mark.parametrize("cors_enabled", [True, False])
 async def test_cors_headers(db_path, cors_enabled):
     ds = Datasette(
-        [db_path],
+        [str(db_path)],
         cors=cors_enabled,
     )
     async with httpx.AsyncClient(app=ds.app()) as client:
@@ -477,7 +477,7 @@ async def test_graphql_http_get(ds, query, extra_query_string, expected_data):
 async def test_configured_fts_search_for_view(db_path):
     _schema_cache.clear()
     ds = Datasette(
-        [db_path],
+        [str(db_path)],
         metadata={
             "databases": {
                 "test": {
@@ -514,7 +514,8 @@ async def test_configured_fts_search_for_view(db_path):
 @pytest.mark.asyncio
 async def test_time_limit_ms(db_path):
     ds = Datasette(
-        [db_path], metadata={"plugins": {"datasette-graphql": {"time_limit_ms": 0.1}}}
+        [str(db_path)],
+        metadata={"plugins": {"datasette-graphql": {"time_limit_ms": 0.1}}},
     )
     query = """
     {
@@ -541,7 +542,8 @@ async def test_time_limit_ms(db_path):
 @pytest.mark.asyncio
 async def test_num_queries_limit(db_path):
     ds = Datasette(
-        [db_path], metadata={"plugins": {"datasette-graphql": {"num_queries_limit": 2}}}
+        [str(db_path)],
+        metadata={"plugins": {"datasette-graphql": {"num_queries_limit": 2}}},
     )
     query = """
     {
@@ -589,7 +591,7 @@ async def test_num_queries_limit(db_path):
 @pytest.mark.asyncio
 async def test_time_limits_0(db_path):
     ds = Datasette(
-        [db_path],
+        [str(db_path)],
         metadata={
             "plugins": {
                 "datasette-graphql": {"num_queries_limit": 0, "time_limit_ms": 0}
@@ -724,7 +726,7 @@ async def test_no_error_on_empty_schema():
 
 @pytest.mark.asyncio
 async def test_table_action(db_path):
-    ds = Datasette([db_path])
+    ds = Datasette([str(db_path)], pdb=True)
     response = await ds.client.get("/test/repos")
     html = response.text
     prefix = '<li><a href="/graphql/test?query='
