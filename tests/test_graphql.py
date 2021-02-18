@@ -41,8 +41,17 @@ async def test_graphiql():
         response = await client.get(
             "http://localhost/graphql", headers={"Accept": "text/html"}
         )
-        assert 200 == response.status_code
+        assert response.status_code == 200
         assert "<title>GraphiQL</title>" in response.text
+    # Check that bundled assets are all present
+    paths = []
+    paths.extend(re.findall(r'<link href="(.*?)"', response.text))
+    paths.extend(re.findall(r'<script src="(.*?)"', response.text))
+    async with httpx.AsyncClient(app=app) as client:
+        for path in paths:
+            assert path.startswith("/-/static-plugins/datasette_graphql/")
+            response2 = await client.get("http://localhost" + path)
+            assert response2.status_code == 200
 
 
 @pytest.mark.asyncio
