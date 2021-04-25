@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/datasette-graphql.svg)](https://pypi.org/project/datasette-graphql/)
 [![Changelog](https://img.shields.io/github/v/release/simonw/datasette-graphql?include_prereleases&label=changelog)](https://github.com/simonw/datasette-graphql/releases)
 [![Tests](https://github.com/simonw/datasette-graphql/workflows/Test/badge.svg)](https://github.com/simonw/datasette-graphql/actions?query=workflow%3ATest)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/simonw/datasette-graphql/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/simonw/datasette-graphql/blob/main/LICENSE)
 
 **Datasette plugin providing an automatic GraphQL API for your SQLite databases**
 
