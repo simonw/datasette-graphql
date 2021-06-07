@@ -197,7 +197,9 @@ async def test_graphql_error(ds):
 async def test_graphql_auto_camelcase(db_path2, on, expected):
     _schema_cache.clear()
     ds = Datasette(
-        [db_path2], metadata={"plugins": {"datasette-graphql": {"auto_camelcase": on}}}
+        [str(db_path2)],
+        pdb=True,
+        metadata={"plugins": {"datasette-graphql": {"auto_camelcase": on}}},
     )
     query = """
     {
@@ -275,7 +277,7 @@ async def test_graphql_pagination(ds, table):
 
 @pytest.mark.asyncio
 async def test_graphql_multiple_databases(db_path, db_path2):
-    ds = Datasette([db_path, db_path2])
+    ds = Datasette([str(db_path), str(db_path2)])
     query = """
     {
         test_table {

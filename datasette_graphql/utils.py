@@ -483,20 +483,6 @@ async def make_table_node_class(
     return type(meta.graphql_name, (graphene.ObjectType,), table_dict)
 
 
-class DatasetteSpecialConfig(wrapt.ObjectProxy):
-    _overrides = {"suggest_facets": False}
-
-    def config(self, key):
-        if key in self._overrides:
-            return self._overrides[key]
-        return self.__wrapped__.config(key)
-
-    def setting(self, key):
-        if key in self._overrides:
-            return self._overrides[key]
-        return self.__wrapped__.setting(key)
-
-
 def make_table_resolver(
     datasette,
     database_name,
@@ -507,8 +493,6 @@ def make_table_resolver(
     pk_args=None,
     return_first_row=False,
 ):
-    from datasette.views.table import TableView
-
     meta = table_metadata[table_name]
 
     async def resolve_table(
@@ -597,12 +581,13 @@ def make_table_resolver(
                     path_with_query_string,
                 )
 
-        request = Request.fake(path_with_query_string)
-
-        view = TableView(DatasetteSpecialConfig(datasette))
-        data, _, _ = await view.data(
-            request, database=database_name, hash=None, table=table_name, _next=after
-        )
+        data = (await datasette.client.get(path_with_query_string)).json()
+        data["rows"] = [dict(zip(data["columns"], row)) for row in data["rows"]]
+        # If any cells are $base64, decode them into bytes objects
+        for row in data["rows"]:
+            for key, value in row.items():
+                if isinstance(value, dict) and value.get("$base64"):
+                    row[key] = b64decode(value["encoded"])
         klass = table_classes[table_name]
         data["rows"] = [klass.from_row(r) for r in data["rows"]]
         if return_first_row:
