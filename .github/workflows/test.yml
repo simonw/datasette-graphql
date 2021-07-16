@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -e '.[test]'
-        pip uninstall datasette
+        pip uninstall -y datasette
         pip install https://github.com/simonw/datasette/archive/refs/heads/asyncio-lock.zip
     - name: Run tests
       run: |
