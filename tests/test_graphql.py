@@ -546,7 +546,7 @@ async def test_time_limit_ms(db_path):
         assert len(response_json["errors"]) == 1
         assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
         assert response_json["errors"][0]["message"].endswith(
-            " > 0.1ms - /test/repos.json?_size=10&_search=dogspotter"
+            " > 0.1ms - /test/repos.json?_nofacet=1&_size=10&_search=dogspotter"
         )
 
 
@@ -591,7 +591,7 @@ async def test_num_queries_limit(db_path):
             },
             "errors": [
                 {
-                    "message": "Query limit exceeded: 3 > 2 - /test/repos.json?_size=10&owner=2",
+                    "message": "Query limit exceeded: 3 > 2 - /test/repos.json?_nofacet=1&_size=10&owner=2",
                     "locations": [{"line": 7, "column": 17}],
                     "path": ["users", "nodes", 1, "repos_list"],
                 }

@@ -534,7 +534,9 @@ def make_table_resolver(
                 if kwargs.get(pk) is not None:
                     pairs.append([pk, kwargs[pk]])
 
-        qs = {}
+        qs = {
+            "_nofacet": 1,
+        }
         qs.update(pairs)
         if after:
             qs["_next"] = after
