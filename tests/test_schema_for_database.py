@@ -1,4 +1,3 @@
-from datasette.app import Datasette
 from datasette_graphql.utils import schema_for_database
 from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql import graphql
