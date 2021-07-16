@@ -1,7 +1,6 @@
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from enum import Enum
-from datasette.utils.asgi import Request
 import graphene
 from graphene.types import generic
 import json
@@ -10,7 +9,6 @@ import re
 import sqlite_utils
 import textwrap
 import time
-import wrapt
 
 TableMetadata = namedtuple(
     "TableMetadata",

@@ -1,4 +1,3 @@
-from urllib.parse import urlencode
 from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound, Forbidden
