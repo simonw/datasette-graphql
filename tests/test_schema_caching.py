@@ -3,7 +3,6 @@ from datasette_graphql.utils import schema_for_database, _schema_cache
 import sqlite_utils
 import pytest
 from unittest import mock
-import httpx
 import sys
 from .fixtures import build_database
 
@@ -29,10 +28,9 @@ async def test_schema_caching(mock_schema_for_database, tmp_path_factory):
     # The first hit should call schema_for_database
     assert not mock_schema_for_database.called
     ds = Datasette([str(db_path)])
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.get("http://localhost/graphql/schema.graphql")
-        assert response.status_code == 200
-        assert "view_on_table_with_pkSort" in response.text
+    response = await ds.client.get("/graphql/schema.graphql")
+    assert response.status_code == 200
+    assert "view_on_table_with_pkSort" in response.text
 
     assert mock_schema_for_database.called
 
@@ -42,11 +40,10 @@ async def test_schema_caching(mock_schema_for_database, tmp_path_factory):
 
     # The secod hit should NOT call it
     assert not mock_schema_for_database.called
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.get("http://localhost/graphql/schema.graphql")
-        assert response.status_code == 200
-        assert "view_on_table_with_pkSort" in response.text
-        assert "new_table" not in response.text
+    response = await ds.client.get("/graphql/schema.graphql")
+    assert response.status_code == 200
+    assert "view_on_table_with_pkSort" in response.text
+    assert "new_table" not in response.text
 
     assert not mock_schema_for_database.called
 
@@ -56,11 +53,10 @@ async def test_schema_caching(mock_schema_for_database, tmp_path_factory):
     # We change the schema and it should be called again
     db["new_table"].insert({"new_column": 1})
 
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.get("http://localhost/graphql/schema.graphql")
-        assert response.status_code == 200
-        assert "view_on_table_with_pkSort" in response.text
-        assert "new_table" in response.text
+    response = await ds.client.get("/graphql/schema.graphql")
+    assert response.status_code == 200
+    assert "view_on_table_with_pkSort" in response.text
+    assert "new_table" in response.text
 
     assert mock_schema_for_database.called
 

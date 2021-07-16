@@ -4,7 +4,6 @@ import json
 import pathlib
 import pytest
 import re
-import httpx
 import urllib
 import textwrap
 from .fixtures import ds, db_path, db_path2
@@ -16,42 +15,35 @@ variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
 
 @pytest.mark.asyncio
 async def test_plugin_is_installed():
-    app = Datasette([], memory=True).app()
-    async with httpx.AsyncClient(app=app) as client:
-        response = await client.get("http://localhost/-/plugins.json")
-        assert 200 == response.status_code
-        installed_plugins = {p["name"] for p in response.json()}
-        assert "datasette-graphql" in installed_plugins
+    ds = Datasette([], memory=True)
+    response = await ds.client.get("/-/plugins.json")
+    assert 200 == response.status_code
+    installed_plugins = {p["name"] for p in response.json()}
+    assert "datasette-graphql" in installed_plugins
 
 
 @pytest.mark.asyncio
 async def test_menu():
     ds = Datasette([], memory=True)
-    app = ds.app()
-    async with httpx.AsyncClient(app=app) as client:
-        response = await client.get("http://localhost/")
-        assert 200 == response.status_code
-        assert '<li><a href="/graphql">GraphQL API</a></li>' in response.text
+    response = await ds.client.get("/")
+    assert 200 == response.status_code
+    assert '<li><a href="/graphql">GraphQL API</a></li>' in response.text
 
 
 @pytest.mark.asyncio
 async def test_graphiql():
-    app = Datasette([], memory=True).app()
-    async with httpx.AsyncClient(app=app) as client:
-        response = await client.get(
-            "http://localhost/graphql", headers={"Accept": "text/html"}
-        )
-        assert response.status_code == 200
-        assert "<title>GraphiQL</title>" in response.text
+    ds = Datasette([], memory=True)
+    response = await ds.client.get("/graphql", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "<title>GraphiQL</title>" in response.text
     # Check that bundled assets are all present
     paths = []
     paths.extend(re.findall(r'<link href="(.*?)"', response.text))
     paths.extend(re.findall(r'<script src="(.*?)"', response.text))
-    async with httpx.AsyncClient(app=app) as client:
-        for path in paths:
-            assert path.startswith("/-/static-plugins/datasette_graphql/")
-            response2 = await client.get("http://localhost" + path)
-            assert response2.status_code == 200
+    for path in paths:
+        assert path.startswith("/-/static-plugins/datasette_graphql/")
+        response2 = await ds.client.get(path)
+        assert response2.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -67,39 +59,37 @@ async def test_query_fields(ds):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200
-        fields = {
-            f["name"]
-            for f in response.json()["data"]["__schema"]["queryType"]["fields"]
-        }
-        assert fields == {
-            "_1_images_row",
-            "_1_images",
-            "t_table_",
-            "t_table__row",
-            "issues_row",
-            "issues",
-            "licenses_row",
-            "licenses",
-            "repos_row",
-            "repos",
-            "table_with_compound_pk_row",
-            "table_with_compound_pk",
-            "table_with_pk_row",
-            "table_with_pk",
-            "table_with_rowid_row",
-            "table_with_rowid",
-            "type_compound_key",
-            "type_compound_key_row",
-            "users_row",
-            "users",
-            "view_on_table_with_pk_row",
-            "view_on_table_with_pk",
-            "view_on_repos_row",
-            "view_on_repos",
-        }
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 200
+    fields = {
+        f["name"] for f in response.json()["data"]["__schema"]["queryType"]["fields"]
+    }
+    assert fields == {
+        "_1_images_row",
+        "_1_images",
+        "t_table_",
+        "t_table__row",
+        "issues_row",
+        "issues",
+        "licenses_row",
+        "licenses",
+        "repos_row",
+        "repos",
+        "table_with_compound_pk_row",
+        "table_with_compound_pk",
+        "table_with_pk_row",
+        "table_with_pk",
+        "table_with_rowid_row",
+        "table_with_rowid",
+        "type_compound_key",
+        "type_compound_key_row",
+        "users_row",
+        "users",
+        "view_on_table_with_pk_row",
+        "view_on_table_with_pk",
+        "view_on_repos_row",
+        "view_on_repos",
+    }
 
 
 @pytest.mark.asyncio
@@ -125,10 +115,9 @@ async def test_query_fields(ds):
     ],
 )
 async def test_graphql_errors(ds, query, expected_errors):
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 500
-        assert response.json()["errors"] == expected_errors
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 500
+    assert response.json()["errors"] == expected_errors
 
 
 @pytest.mark.asyncio
@@ -143,47 +132,45 @@ async def test_graphql_examples(ds, path):
     except TypeError:
         variables = "{}"
     expected = json.loads(json_re.search(content)[1])
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post(
-            "http://localhost/graphql",
-            json={
-                "query": query,
-                "variables": json.loads(variables),
-            },
-        )
-        assert response.status_code == 200, response.json()
-        if response.json()["data"] != expected:
-            print("Actual:")
-            print(json.dumps(response.json()["data"], indent=4))
-        assert response.json()["data"] == expected
+    response = await ds.client.post(
+        "/graphql",
+        json={
+            "query": query,
+            "variables": json.loads(variables),
+        },
+    )
+    assert response.status_code == 200, response.json()
+    if response.json()["data"] != expected:
+        print("Actual:")
+        print(json.dumps(response.json()["data"], indent=4))
+    assert response.json()["data"] == expected
 
 
 @pytest.mark.asyncio
 async def test_graphql_error(ds):
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post(
-            "http://localhost/graphql",
-            json={
-                "query": """{
-                    users {
-                        nodes {
-                            nam2
-                            score
-                        }
+    response = await ds.client.post(
+        "/graphql",
+        json={
+            "query": """{
+                users {
+                    nodes {
+                        nam2
+                        score
                     }
-                }"""
-            },
-        )
-        assert response.status_code == 500
-        assert response.json() == {
-            "data": None,
-            "errors": [
-                {
-                    "message": 'Cannot query field "nam2" on type "users". Did you mean "name"?',
-                    "locations": [{"line": 4, "column": 29}],
                 }
-            ],
-        }
+            }"""
+        },
+    )
+    assert response.status_code == 500
+    assert response.json() == {
+        "data": None,
+        "errors": [
+            {
+                "message": 'Cannot query field "nam2" on type "users". Did you mean "name"?',
+                "locations": [{"line": 4, "column": 25}],
+            }
+        ],
+    }
 
 
 @pytest.mark.asyncio
@@ -214,10 +201,9 @@ async def test_graphql_auto_camelcase(db_path2, on, expected):
     ).replace(
         "TABLE", "testTable" if on else "test_table"
     )
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200
-        assert response.json() == {"data": expected}
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 200
+    assert response.json() == {"data": expected}
 
 
 @pytest.mark.asyncio
@@ -256,19 +242,16 @@ async def test_graphql_pagination(ds, table):
         ).replace(
             "ARGS", ", ".join(args)
         )
-        async with httpx.AsyncClient(app=ds.app()) as client:
-            response = await client.post(
-                "http://localhost/graphql", json={"query": query}
-            )
-            assert response.status_code == 200
-            data = response.json()["data"]
-            names_from_nodes.extend([n["name"] for n in data[table]["nodes"]])
-            names_from_edges.extend([e["node"]["name"] for e in data[table]["edges"]])
-            after = data[table]["pageInfo"]["endCursor"]
-            assert data[table]["pageInfo"]["hasNextPage"] == bool(after)
-            assert data[table]["totalCount"] == 21
-            if not after:
-                break
+        response = await ds.client.post("/graphql", json={"query": query})
+        assert response.status_code == 200
+        data = response.json()["data"]
+        names_from_nodes.extend([n["name"] for n in data[table]["nodes"]])
+        names_from_edges.extend([e["node"]["name"] for e in data[table]["edges"]])
+        after = data[table]["pageInfo"]["endCursor"]
+        assert data[table]["pageInfo"]["hasNextPage"] == bool(after)
+        assert data[table]["totalCount"] == 21
+        if not after:
+            break
     assert len(names_from_nodes) == 21
     assert len(names_from_edges) == 21
     assert len(set(names_from_nodes)) == 21
@@ -287,14 +270,11 @@ async def test_graphql_multiple_databases(db_path, db_path2):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post(
-            "http://localhost/graphql/test2", json={"query": query}
-        )
-        assert response.status_code == 200, response.json()
-        assert response.json() == {
-            "data": {"test_table": {"nodes": [{"full_name": "This is a full name"}]}}
-        }
+    response = await ds.client.post("/graphql/test2", json={"query": query})
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "data": {"test_table": {"nodes": [{"full_name": "This is a full name"}]}}
+    }
 
 
 @pytest.mark.asyncio
@@ -324,43 +304,41 @@ async def test_graphql_json_columns(db_path):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200, response.json()
-        assert response.json() == {
-            "data": {
-                "repos": {
-                    "nodes": [
-                        {
-                            "full_name": "simonw/datasette",
-                            "tags": ["databases", "apis"],
-                        },
-                        {"full_name": "cleopaws/dogspotter", "tags": ["dogs"]},
-                        {"full_name": "simonw/private", "tags": []},
-                    ]
-                }
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 200, response.json()
+    assert response.json() == {
+        "data": {
+            "repos": {
+                "nodes": [
+                    {
+                        "full_name": "simonw/datasette",
+                        "tags": ["databases", "apis"],
+                    },
+                    {"full_name": "cleopaws/dogspotter", "tags": ["dogs"]},
+                    {"full_name": "simonw/private", "tags": []},
+                ]
             }
         }
+    }
 
 
 @pytest.mark.asyncio
 async def test_graphql_output_schema(ds):
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.options("http://localhost/graphql/test.graphql")
-        assert response.status_code == 200
-        for fragment in (
-            "schema {\n  query: Query\n}",
-            "input IntegerOperations {",
-            "users(filter: [usersFilter], where: String, first: Int, after: String, sort: usersSort, sort_desc: usersSortDesc): usersCollection",
-            "users_row(filter: [usersFilter], where: String, after: String, sort: usersSort, sort_desc: usersSortDesc, id: Int): users",
-            "type _1_images {",
-            "type _1_imagesCollection {",
-            "type _1_imagesEdge {",
-            "input _1_imagesFilter {",
-            "enum _1_imagesSort {",
-            "enum _1_imagesSortDesc {",
-        ):
-            assert fragment in response.text
+    response = await ds.client.options("/graphql/test.graphql")
+    assert response.status_code == 200
+    for fragment in (
+        "schema {\n  query: Query\n}",
+        "input IntegerOperations {",
+        "users(filter: [usersFilter], where: String, first: Int, after: String, sort: usersSort, sort_desc: usersSortDesc): usersCollection",
+        "users_row(filter: [usersFilter], where: String, after: String, sort: usersSort, sort_desc: usersSortDesc, id: Int): users",
+        "type _1_images {",
+        "type _1_imagesCollection {",
+        "type _1_imagesEdge {",
+        "input _1_imagesFilter {",
+        "enum _1_imagesSort {",
+        "enum _1_imagesSortDesc {",
+    ):
+        assert fragment in response.text
 
 
 @pytest.mark.asyncio
@@ -370,18 +348,17 @@ async def test_cors_headers(db_path, cors_enabled):
         [str(db_path)],
         cors=cors_enabled,
     )
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.options("http://localhost/graphql")
-        assert response.status_code == 200
-        desired_headers = {
-            "access-control-allow-headers": "content-type",
-            "access-control-allow-method": "POST",
-            "access-control-allow-origin": "*",
-        }.items()
-        if cors_enabled:
-            assert desired_headers <= dict(response.headers).items()
-        else:
-            assert not desired_headers <= dict(response.headers).items()
+    response = await ds.client.options("/graphql")
+    assert response.status_code == 200
+    desired_headers = {
+        "access-control-allow-headers": "content-type",
+        "access-control-allow-method": "POST",
+        "access-control-allow-origin": "*",
+    }.items()
+    if cors_enabled:
+        assert desired_headers <= dict(response.headers).items()
+    else:
+        assert not desired_headers <= dict(response.headers).items()
 
 
 @pytest.mark.asyncio
@@ -417,13 +394,12 @@ async def test_operation_name(ds, operation_name, expected_status, expected_data
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post(
-            "http://localhost/graphql",
-            json={"query": query, "operationName": operation_name},
-        )
-        assert response.status_code == expected_status, response.json()
-        assert response.json() == expected_data
+    response = await ds.client.post(
+        "/graphql",
+        json={"query": query, "operationName": operation_name},
+    )
+    assert response.status_code == expected_status, response.json()
+    assert response.json() == expected_data
 
 
 @pytest.mark.asyncio
@@ -476,12 +452,11 @@ async def test_operation_name(ds, operation_name, expected_status, expected_data
     ],
 )
 async def test_graphql_http_get(ds, query, extra_query_string, expected_data):
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        params = dict(extra_query_string)
-        params["query"] = query
-        response = await client.get("http://localhost/graphql", params=params)
-        assert response.status_code == 200
-        assert response.json() == expected_data
+    params = dict(extra_query_string)
+    params["query"] = query
+    response = await ds.client.get("/graphql", params=params)
+    assert response.status_code == 200
+    assert response.json() == expected_data
 
 
 @pytest.mark.asyncio
@@ -509,16 +484,13 @@ async def test_configured_fts_search_for_view(db_path):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200
-        assert response.json() == {
-            "data": {
-                "view_on_repos": {
-                    "nodes": [{"id": 2, "full_name": "cleopaws/dogspotter"}]
-                }
-            }
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": {
+            "view_on_repos": {"nodes": [{"id": 2, "full_name": "cleopaws/dogspotter"}]}
         }
+    }
     _schema_cache.clear()
 
 
@@ -538,16 +510,15 @@ async def test_time_limit_ms(db_path):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 500
-        response_json = response.json()
-        assert response_json["data"] == {"repos": None}
-        assert len(response_json["errors"]) == 1
-        assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
-        assert response_json["errors"][0]["message"].endswith(
-            " > 0.1ms - /test/repos.json?_nofacet=1&_size=10&_search=dogspotter"
-        )
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 500
+    response_json = response.json()
+    assert response_json["data"] == {"repos": None}
+    assert len(response_json["errors"]) == 1
+    assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
+    assert response_json["errors"][0]["message"].endswith(
+        " > 0.1ms - /test/repos.json?_nofacet=1&_size=10&_search=dogspotter"
+    )
 
 
 @pytest.mark.asyncio
@@ -571,32 +542,29 @@ async def test_num_queries_limit(db_path):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 500
-        assert response.json() == {
-            "data": {
-                "users": {
-                    "nodes": [
-                        {
-                            "id": 1,
-                            "name": "cleopaws",
-                            "repos_list": {
-                                "nodes": [{"full_name": "cleopaws/dogspotter"}]
-                            },
-                        },
-                        {"id": 2, "name": "simonw", "repos_list": None},
-                    ]
-                }
-            },
-            "errors": [
-                {
-                    "message": "Query limit exceeded: 3 > 2 - /test/repos.json?_nofacet=1&_size=10&owner=2",
-                    "locations": [{"line": 7, "column": 17}],
-                    "path": ["users", "nodes", 1, "repos_list"],
-                }
-            ],
-        }
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 500
+    assert response.json() == {
+        "data": {
+            "users": {
+                "nodes": [
+                    {
+                        "id": 1,
+                        "name": "cleopaws",
+                        "repos_list": {"nodes": [{"full_name": "cleopaws/dogspotter"}]},
+                    },
+                    {"id": 2, "name": "simonw", "repos_list": None},
+                ]
+            }
+        },
+        "errors": [
+            {
+                "message": "Query limit exceeded: 3 > 2 - /test/repos.json?_nofacet=1&_size=10&owner=2",
+                "locations": [{"line": 7, "column": 17}],
+                "path": ["users", "nodes", 1, "repos_list"],
+            }
+        ],
+    }
 
 
 @pytest.mark.asyncio
@@ -624,34 +592,31 @@ async def test_time_limits_0(db_path):
         }
     }
     """
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        response = await client.post("http://localhost/graphql", json={"query": query})
-        assert response.status_code == 200
-        assert response.json() == {
-            "data": {
-                "users": {
-                    "nodes": [
-                        {
-                            "id": 1,
-                            "name": "cleopaws",
-                            "repos_list": {
-                                "nodes": [{"full_name": "cleopaws/dogspotter"}]
-                            },
+    response = await ds.client.post("/graphql", json={"query": query})
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": {
+            "users": {
+                "nodes": [
+                    {
+                        "id": 1,
+                        "name": "cleopaws",
+                        "repos_list": {"nodes": [{"full_name": "cleopaws/dogspotter"}]},
+                    },
+                    {
+                        "id": 2,
+                        "name": "simonw",
+                        "repos_list": {
+                            "nodes": [
+                                {"full_name": "simonw/datasette"},
+                                {"full_name": "simonw/private"},
+                            ]
                         },
-                        {
-                            "id": 2,
-                            "name": "simonw",
-                            "repos_list": {
-                                "nodes": [
-                                    {"full_name": "simonw/datasette"},
-                                    {"full_name": "simonw/private"},
-                                ]
-                            },
-                        },
-                    ]
-                }
+                    },
+                ]
             }
         }
+    }
 
 
 @pytest.mark.asyncio
@@ -713,18 +678,17 @@ async def test_time_limits_0(db_path):
 )
 async def test_permissions(db_path, db_path2, metadata, expected):
     ds = Datasette([db_path, db_path2], metadata=metadata)
-    async with httpx.AsyncClient(app=ds.app()) as client:
-        for authenticated, path, expected_status in expected:
-            ds._permission_checks.clear()
-            cookies = {}
-            if authenticated:
-                cookies["ds_actor"] = ds.sign({"a": {"id": "user"}}, "actor")
-            response = await client.get(
-                "http://localhost" + path,
-                cookies=cookies,
-                headers={"Accept": "text/html"},
-            )
-            assert response.status_code == expected_status
+    for authenticated, path, expected_status in expected:
+        ds._permission_checks.clear()
+        cookies = {}
+        if authenticated:
+            cookies["ds_actor"] = ds.sign({"a": {"id": "user"}}, "actor")
+        response = await ds.client.get(
+            path,
+            cookies=cookies,
+            headers={"Accept": "text/html"},
+        )
+        assert response.status_code == expected_status
 
 
 @pytest.mark.asyncio
