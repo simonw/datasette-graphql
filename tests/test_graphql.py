@@ -553,27 +553,15 @@ async def test_num_queries_limit(db_path):
     """
     response = await ds.client.post("/graphql", json={"query": query})
     assert response.status_code == 500
-    assert response.json() == {
-        "data": {
-            "users": {
-                "nodes": [
-                    {
-                        "id": 1,
-                        "name": "cleopaws",
-                        "repos_list": {"nodes": [{"full_name": "cleopaws/dogspotter"}]},
-                    },
-                    {"id": 2, "name": "simonw", "repos_list": None},
-                ]
-            }
-        },
-        "errors": [
-            {
-                "message": "Query limit exceeded: 3 > 2 - /test/repos.json?_nofacet=1&_size=10&owner=2",
-                "locations": [{"line": 7, "column": 17}],
-                "path": ["users", "nodes", 1, "repos_list"],
-            }
-        ],
-    }
+    data_and_errors = response.json()
+    data = data_and_errors["data"]
+    errors = data_and_errors["errors"]
+    users = data["users"]["nodes"]
+    # One of the two users should have an empty repos_list
+    assert (users[0]["repos_list"] is None) or (users[1]["repos_list"] is None)
+    # Errors should say query limit was exceeded
+    assert len(errors) == 1
+    assert errors[0]["message"].startswith("Query limit exceeded: 3 > 2 - ")
 
 
 @pytest.mark.asyncio
