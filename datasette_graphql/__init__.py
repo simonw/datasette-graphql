@@ -5,8 +5,10 @@ from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
-import urllib
+import pathlib
 import time
+import urllib
+
 
 DEFAULT_TIME_LIMIT_MS = 1000
 DEFAULT_NUM_QUERIES_LIMIT = 100
@@ -58,11 +60,14 @@ async def view_graphql(request, datasette):
     await check_permissions(request, datasette, db.name)
 
     if not body and "text/html" in request.headers.get("accept", ""):
+        static = pathlib.Path(__file__).parent / "static"
         return Response.html(
             await datasette.render_template(
                 "graphiql.html",
                 {
                     "database": database,
+                    "graphiql_css": [p.name for p in static.glob("*.css")],
+                    "graphiql_js": [p.name for p in static.glob("*.js")],
                 },
                 request=request,
             ),

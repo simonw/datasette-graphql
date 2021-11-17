@@ -13,11 +13,12 @@
         height: 100vh;
       }
     </style>
-    <link href="{{ urls.static_plugins("datasette_graphql", "graphiql.css") }}" rel="stylesheet"/>
-    <script src="{{ urls.static_plugins("datasette_graphql", "fetch.min.js") }}"></script>
-    <script src="{{ urls.static_plugins("datasette_graphql", "react.production.min.js") }}"></script>
-    <script src="{{ urls.static_plugins("datasette_graphql", "react-dom.production.min.js") }}"></script>
-    <script src="{{ urls.static_plugins("datasette_graphql", "graphiql.min.js") }}"></script>
+    {% for filename in graphiql_css %}
+    <link href="{{ urls.static_plugins("datasette_graphql", filename) }}" rel="stylesheet">
+    {% endfor %}
+    {% for filename in graphiql_js %}
+    <script src="{{ urls.static_plugins("datasette_graphql", filename) }}"></script>
+    {% endfor %}
   </head>
   <body>
     <div id="graphiql">Loading...</div>
