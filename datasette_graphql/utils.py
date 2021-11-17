@@ -4,6 +4,7 @@ from enum import Enum
 import graphene
 from graphene.types import generic
 import json
+import keyword
 import urllib
 import re
 import sqlite_utils
@@ -703,6 +704,13 @@ _invalid_chars_re = re.compile(r"[^_a-zA-Z0-9]")
 
 class Namer:
     def __init__(self, underscore_prefix=""):
+        # Disallow all Python keywords
+        # https://github.com/simonw/datasette-graphql/issues/84
+        self.reserved = set(keyword.kwlist)
+        # 'description' confuses Graphene
+        # https://github.com/simonw/datasette-graphql/issues/85
+        self.reserved.add("description")
+        # Track names we have already issued:
         self.names = set()
         self.underscore_prefix = underscore_prefix
 
@@ -713,6 +721,8 @@ class Namer:
             value = "_"
         if value[0].isdigit():
             value = "_" + value
+        if value in self.reserved:
+            value += "_"
         suffix = 2
         orig = value
         if value.startswith("_") and value.endswith("_"):

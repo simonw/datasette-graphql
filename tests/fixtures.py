@@ -102,6 +102,9 @@ def build_database(db):
         ],
         pk=("pk1", "pk2"),
     )
+    db["table_with_reserved_columns"].insert(
+        {"id": 1, "if": "keyword if", "description": "a description"}, pk="id"
+    )
     db.create_view("view_on_table_with_pk", "select * from table_with_pk")
     db.create_view("view_on_repos", "select * from repos")
 

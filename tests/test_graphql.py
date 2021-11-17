@@ -83,6 +83,8 @@ async def test_query_fields(ds):
         "table_with_rowid",
         "type_compound_key",
         "type_compound_key_row",
+        "table_with_reserved_columns",
+        "table_with_reserved_columns_row",
         "users_row",
         "users",
         "view_on_table_with_pk_row",
@@ -734,3 +736,31 @@ async def test_table_action(db_path):
         """
         ).strip()
     )
+
+
+@pytest.mark.asyncio
+async def test_graphql_reserved_column_names(ds):
+    response = await ds.client.post(
+        "/graphql",
+        json={
+            "query": """{
+                table_with_reserved_columns {
+                    nodes {
+                        id
+                        if_
+                        description_
+                    }
+                }
+            }"""
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": {
+            "table_with_reserved_columns": {
+                "nodes": [
+                    {"id": 1, "if_": "keyword if", "description_": "a description"}
+                ]
+            }
+        }
+    }
