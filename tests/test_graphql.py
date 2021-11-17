@@ -40,10 +40,22 @@ async def test_graphiql():
     paths = []
     paths.extend(re.findall(r'<link href="(.*?)"', response.text))
     paths.extend(re.findall(r'<script src="(.*?)"', response.text))
+    # Check that those paths are all 200s
     for path in paths:
         assert path.startswith("/-/static-plugins/datasette_graphql/")
         response2 = await ds.client.get(path)
         assert response2.status_code == 200
+    # Check that react/react-dom/grapihql are in order
+    filenames_and_extensions = [
+        (path.split("/")[-1].split(".")[0], path.split("/")[-1].split(".")[-1])
+        for path in paths
+    ]
+    assert filenames_and_extensions == [
+        ("graphiql", "css"),
+        ("react", "js"),
+        ("react-dom", "js"),
+        ("graphiql", "js"),
+    ]
 
 
 @pytest.mark.asyncio

@@ -61,13 +61,17 @@ async def view_graphql(request, datasette):
 
     if not body and "text/html" in request.headers.get("accept", ""):
         static = pathlib.Path(__file__).parent / "static"
+        js_filenames = [p.name for p in static.glob("*.js")]
+        # These need to be sorted so react loads first
+        order = "react", "react-dom", "graphiql"
+        js_filenames.sort(key=lambda filename: order.index(filename.split(".")[0]))
         return Response.html(
             await datasette.render_template(
                 "graphiql.html",
                 {
                     "database": database,
                     "graphiql_css": [p.name for p in static.glob("*.css")],
-                    "graphiql_js": [p.name for p in static.glob("*.js")],
+                    "graphiql_js": js_filenames,
                 },
                 request=request,
             ),
