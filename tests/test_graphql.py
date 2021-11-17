@@ -103,6 +103,8 @@ async def test_query_fields(ds):
         "view_on_table_with_pk",
         "view_on_repos_row",
         "view_on_repos",
+        "bad_foreign_key",
+        "bad_foreign_key_row",
     }
 
 
@@ -776,3 +778,22 @@ async def test_graphql_reserved_column_names(ds):
             }
         }
     }
+
+
+@pytest.mark.asyncio
+async def test_bad_foreign_keys(ds):
+    # https://github.com/simonw/datasette-graphql/issues/79
+    response = await ds.client.post(
+        "/graphql",
+        json={
+            "query": """{
+                bad_foreign_key {
+                    nodes {
+                        fk
+                    }
+                }
+            }"""
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {"data": {"bad_foreign_key": {"nodes": [{"fk": 1}]}}}

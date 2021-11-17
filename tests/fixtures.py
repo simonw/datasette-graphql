@@ -107,6 +107,15 @@ def build_database(db):
     )
     db.create_view("view_on_table_with_pk", "select * from table_with_pk")
     db.create_view("view_on_repos", "select * from repos")
+    # Create a table with a non-existent foreign key
+    db.execute(
+        """
+        create table bad_foreign_key (
+            fk integer not null references not_a_table(id) deferrable initially deferred
+        );
+    """
+    )
+    db["bad_foreign_key"].insert({"fk": 1})
 
 
 @pytest.fixture(scope="session")

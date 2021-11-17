@@ -669,8 +669,13 @@ def introspect_tables(conn, datasette, db_name):
         supports_fts = bool(datasette_table_metadata.get("fts_table"))
         fks_back = []
         if hasattr(db[table], "foreign_keys"):
-            # Views don't have this
-            foreign_keys = db[table].foreign_keys
+            # Views don't have .foreign_keys
+            foreign_keys = [
+                fk
+                for fk in db[table].foreign_keys
+                # filter out keys to tables that do not exist
+                if fk.other_table in table_names
+            ]
             pks = db[table].pks
             supports_fts = bool(db[table].detect_fts()) or supports_fts
             # Gather all foreign keys pointing back here
