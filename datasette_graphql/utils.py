@@ -107,10 +107,12 @@ async def schema_for_database(datasette, database=None):
         column_names = meta.graphql_columns.values()
         options = list(zip(column_names, column_names))
         sort_enum = graphene.Enum.from_enum(
-            Enum("{}Sort".format(meta.graphql_name), options)
+            Enum("{}Sort".format(meta.graphql_name), options),
+            description="Sort by this column",
         )
         sort_desc_enum = graphene.Enum.from_enum(
-            Enum("{}SortDesc".format(meta.graphql_name), options)
+            Enum("{}SortDesc".format(meta.graphql_name), options),
+            description="Sort by this column descending",
         )
         kwargs = dict(
             filter=graphene.List(
@@ -124,10 +126,8 @@ async def schema_for_database(datasette, database=None):
             after=graphene.String(
                 description="Start at this pagination cursor (from tableInfo { endCursor })"
             ),
-            sort=graphene.Argument(sort_enum, description="Sort by this column"),
-            sort_desc=graphene.Argument(
-                sort_desc_enum, description="Sort by this column descending"
-            ),
+            sort=sort_enum(),
+            sort_desc=sort_desc_enum(),
         )
         if meta.supports_fts:
             kwargs["search"] = graphene.String(description="Search for this term")
@@ -230,7 +230,7 @@ async def schema_for_database(datasette, database=None):
         (graphene.ObjectType,),
         {key: value for key, value in to_add},
     )
-    return DatabaseSchema(
+    database_schema = DatabaseSchema(
         schema=graphene.Schema(
             query=Query,
             auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
@@ -240,6 +240,7 @@ async def schema_for_database(datasette, database=None):
         table_classes=table_classes,
         table_collection_classes=table_collection_classes,
     )
+    return database_schema
 
 
 def make_table_collection_class(table, table_class, meta):
@@ -555,9 +556,9 @@ def make_table_resolver(
         if where:
             qs["_where"] = where
         if sort:
-            qs["_sort"] = column_name_rev[sort]
+            qs["_sort"] = column_name_rev[sort.value]
         elif sort_desc:
-            qs["_sort_desc"] = column_name_rev[sort_desc]
+            qs["_sort_desc"] = column_name_rev[sort_desc.value]
 
         path_with_query_string = "/{}/{}.json?{}".format(
             database_name, table_name, urllib.parse.urlencode(qs)
