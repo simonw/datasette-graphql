@@ -107,8 +107,9 @@ async def test_query_fields(ds):
             }""",
             [
                 {
-                    "message": 'Unknown argument "search" on field "users" of type "Query".',
+                    "message": "Unknown argument 'search' on field 'Query.users'.",
                     "locations": [{"line": 2, "column": 23}],
+                    "path": None,
                 }
             ],
         ),
@@ -166,8 +167,9 @@ async def test_graphql_error(ds):
         "data": None,
         "errors": [
             {
-                "message": 'Cannot query field "nam2" on type "users". Did you mean "name"?',
+                "message": "Cannot query field 'nam2' on type 'users'. Did you mean 'name'?",
                 "locations": [{"line": 4, "column": 25}],
+                "path": None,
             }
         ],
     }
@@ -326,11 +328,14 @@ async def test_graphql_json_columns(db_path):
 async def test_graphql_output_schema(ds):
     response = await ds.client.options("/graphql/test.graphql")
     assert response.status_code == 200
+    bad = []
     for fragment in (
-        "schema {\n  query: Query\n}",
+        "type Query {",
         "input IntegerOperations {",
-        "users(filter: [usersFilter], where: String, first: Int, after: String, sort: usersSort, sort_desc: usersSortDesc): usersCollection",
-        "users_row(filter: [usersFilter], where: String, after: String, sort: usersSort, sort_desc: usersSortDesc, id: Int): users",
+        "users(\n",
+        "filter: [usersFilter] = null",
+        "): usersCollection",
+        "users_row(\n",
         "type _1_images {",
         "type _1_imagesCollection {",
         "type _1_imagesEdge {",
@@ -338,7 +343,9 @@ async def test_graphql_output_schema(ds):
         "enum _1_imagesSort {",
         "enum _1_imagesSortDesc {",
     ):
-        assert fragment in response.text
+        if fragment not in response.text:
+            bad.append(fragment)
+    assert not bad, bad
 
 
 @pytest.mark.asyncio
@@ -374,7 +381,9 @@ async def test_cors_headers(db_path, cors_enabled):
                 "data": None,
                 "errors": [
                     {
-                        "message": "Must provide operation name if query contains multiple operations."
+                        "message": "Unknown operation named ''.",
+                        "locations": None,
+                        "path": None,
                     }
                 ],
             },

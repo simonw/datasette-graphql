@@ -1,7 +1,6 @@
 from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound, Forbidden
-from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
@@ -33,7 +32,7 @@ async def view_graphql_schema(request, datasette):
         raise NotFound("Database does not exist")
     await check_permissions(request, datasette, db.name)
     schema = await schema_for_database_via_cache(datasette, database=database)
-    return Response.text(print_schema(schema.schema))
+    return Response.text(print_schema(schema.schema.graphql_schema))
 
 
 CORS_HEADERS = {
@@ -73,7 +72,7 @@ async def view_graphql(request, datasette):
     schema = (await schema_for_database_via_cache(datasette, database=database)).schema
 
     if request.args.get("schema"):
-        return Response.text(print_schema(schema))
+        return Response.text(print_schema(schema.graphql_schema))
 
     incoming = {}
     if body:
@@ -104,14 +103,11 @@ async def view_graphql(request, datasette):
         or DEFAULT_NUM_QUERIES_LIMIT,
     }
 
-    result = await graphql(
-        schema,
+    result = await schema.execute_async(
         query,
         operation_name=operation_name,
-        variable_values=variables,
+        variable_values=variables or {},
         context_value=context,
-        executor=AsyncioExecutor(),
-        return_promise=True,
     )
     response = {"data": result.data}
     if result.errors:
@@ -170,11 +166,8 @@ def extra_template_vars(datasette):
         schema = (
             await schema_for_database_via_cache(datasette, database=database)
         ).schema
-        result = await graphql(
-            schema,
+        result = await schema.execute_async(
             query,
-            executor=AsyncioExecutor(),
-            return_promise=True,
             variable_values=variables or {},
         )
         if result.errors:

@@ -230,7 +230,7 @@ async def schema_for_database(datasette, database=None):
         (graphene.ObjectType,),
         {key: value for key, value in to_add},
     )
-    return DatabaseSchema(
+    database_schema = DatabaseSchema(
         schema=graphene.Schema(
             query=Query,
             auto_camelcase=(datasette.plugin_config("datasette-graphql") or {}).get(
@@ -240,6 +240,7 @@ async def schema_for_database(datasette, database=None):
         table_classes=table_classes,
         table_collection_classes=table_collection_classes,
     )
+    return database_schema
 
 
 def make_table_collection_class(table, table_class, meta):

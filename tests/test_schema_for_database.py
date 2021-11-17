@@ -1,5 +1,4 @@
 from datasette_graphql.utils import schema_for_database
-from graphql.execution.executors.asyncio import AsyncioExecutor
 from graphql import graphql
 import pytest
 from .fixtures import ds, db_path
@@ -20,9 +19,7 @@ async def test_schema(ds):
         }
     }"""
 
-    result = await graphql(
-        schema, query, executor=AsyncioExecutor(), return_promise=True
-    )
+    result = await schema.execute_async(query)
     assert result.data == {
         "users": {
             "totalCount": 2,
