@@ -274,7 +274,7 @@ The [sqlite-utils](https://sqlite-utils.datasette.io/) Python library and CLI to
 
 If your table has a column that contains data encoded as JSON, `datasette-graphql` will make that column available as an encoded JSON string. Clients calling your API will need to parse the string as JSON in order to access the data.
 
-You can return the data as a nested structure by configuring that column to be treated as a JSON column. The plugin configuration for that looks like this:
+You can return the data as a nested structure by configuring that column to be treated as a JSON column. The [plugin configuration](https://docs.datasette.io/en/stable/plugins.html#plugin-configuration) for that in `metadata.json` looks like this:
 
 ```json
 {
