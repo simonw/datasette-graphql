@@ -125,7 +125,6 @@ async def test_query_fields(ds):
                 {
                     "message": "Unknown argument 'search' on field 'Query.users'.",
                     "locations": [{"line": 2, "column": 23}],
-                    "path": None,
                 }
             ],
         ),
@@ -185,7 +184,6 @@ async def test_graphql_error(ds):
             {
                 "message": "Cannot query field 'nam2' on type 'users'. Did you mean 'name'?",
                 "locations": [{"line": 4, "column": 25}],
-                "path": None,
             }
         ],
     }
@@ -349,7 +347,7 @@ async def test_graphql_output_schema(ds):
         "type Query {",
         "input IntegerOperations {",
         "users(\n",
-        "filter: [usersFilter] = null",
+        "filter: [usersFilter]",
         "): usersCollection",
         "users_row(\n",
         "type _1_images {",
@@ -393,16 +391,7 @@ async def test_cors_headers(db_path, cors_enabled):
         (
             "",
             500,
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "message": "Unknown operation named ''.",
-                        "locations": None,
-                        "path": None,
-                    }
-                ],
-            },
+            {"data": None, "errors": [{"message": "Unknown operation named ''."}]},
         ),
     ],
 )

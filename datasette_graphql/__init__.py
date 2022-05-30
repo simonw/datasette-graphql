@@ -1,7 +1,6 @@
 from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound, Forbidden
-from graphql.error import format_error
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
@@ -120,7 +119,7 @@ async def view_graphql(request, datasette):
     )
     response = {"data": result.data}
     if result.errors:
-        response["errors"] = [format_error(error) for error in result.errors]
+        response["errors"] = [error.formatted for error in result.errors]
 
     return Response.json(
         response,
