@@ -11,6 +11,11 @@ from .fixtures import ds, db_path, db_path2
 graphql_re = re.compile(r"```graphql(.*?)```", re.DOTALL)
 json_re = re.compile(r"```json\n(.*?)```", re.DOTALL)
 variables_re = re.compile(r"```json\+variables\n(.*?)```", re.DOTALL)
+whitespace_re = re.compile(r"\s+")
+
+
+def equal_no_whitespace(s1, s2):
+    return whitespace_re.sub("", s1) == whitespace_re.sub("", s2)
 
 
 @pytest.mark.asyncio
@@ -702,42 +707,50 @@ async def test_no_error_on_empty_schema():
 
 
 @pytest.mark.asyncio
-async def test_table_action(db_path):
+@pytest.mark.parametrize(
+    "table,graphql_table,columns",
+    (
+        (
+            "repos",
+            "repos",
+            "id full_name name tags owner { id name } license { _key name }",
+        ),
+        ("_underscore_", "t_underscore_", "id"),
+    ),
+)
+async def test_table_action(db_path, table, graphql_table, columns):
     ds = Datasette([str(db_path)], pdb=True)
-    response = await ds.client.get("/test/repos")
+    db = ds.get_database("test")
+    await db.execute_write(
+        "CREATE TABLE IF NOT EXISTS _underscore_ (id INTEGER PRIMARY KEY)"
+    )
+    response = await ds.client.get("/test/{}".format(table))
     html = response.text
     prefix = '<li><a href="/graphql/test?query='
     assert prefix in html
     example_query = html.split(prefix)[1].split('">')[0]
-    assert (
-        urllib.parse.unquote(example_query)
-        == textwrap.dedent(
+    assert equal_no_whitespace(
+        urllib.parse.unquote(example_query),
+        textwrap.dedent(
             """
         {
-          repos {
+          TABLE {
             totalCount
             pageInfo {
               hasNextPage
               endCursor
             }
             nodes {
-              id
-              full_name
-              name
-              tags
-              owner {
-                id
-                name
-              }
-              license {
-                _key
-                name
-              }
+              COLUMNS
             }
           }
         }
-        """
-        ).strip()
+        """.replace(
+                "TABLE", graphql_table
+            ).replace(
+                "COLUMNS", columns
+            )
+        ),
     )
 
 

@@ -28,7 +28,12 @@ setup(
     version=VERSION,
     packages=["datasette_graphql"],
     entry_points={"datasette": ["graphql = datasette_graphql"]},
-    install_requires=["datasette>=0.58.1", "graphene>=3.1.0,<4.0", "graphql-core>=3.2.1", "sqlite-utils"],
+    install_requires=[
+        "datasette>=0.58.1",
+        "graphene>=3.1.0,<4.0",
+        "graphql-core>=3.2.1",
+        "sqlite-utils",
+    ],
     extras_require={"test": ["pytest", "pytest-asyncio"]},
     package_data={
         "datasette_graphql": ["templates/*.html", "static/*.js", "static/*.css"]
