@@ -28,6 +28,7 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
   * [CORS](#cors)
   * [Execution limits](#execution-limits)
 - [The graphql() template function](#the-graphql-template-function)
+- [Adding custom fields with plugins](#adding-custom-fields-with-plugins)
 - [Development](#development)
 
 <!-- tocstop -->
