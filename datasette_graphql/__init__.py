@@ -1,13 +1,16 @@
 from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound, Forbidden
+from datasette.plugins import pm
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
+from . import hookspecs
 import pathlib
 import time
 import urllib
 
+pm.add_hookspecs(hookspecs)
 
 DEFAULT_TIME_LIMIT_MS = 1000
 DEFAULT_NUM_QUERIES_LIMIT = 100

@@ -26,6 +26,9 @@ def test_examples_link_to_live_demo(request, path):
 
     for match in graphql_re.finditer(content):
         query = match.group(1)
+        if "packages {" in query:
+            # Skip the example illustrating the packages plugin
+            continue
         start = match.start()
         end = match.end()
         args = {"query": query}

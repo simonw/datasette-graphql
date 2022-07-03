@@ -397,6 +397,60 @@ query ($id: Int) {
 
 <h1>Hello, {{ user.name }}</h1>
 ```
+## Adding custom fields with plugins
+
+`datasette-graphql` adds a new [plugin hook](https://docs.datasette.io/en/stable/writing_plugins.html) to Datasette which can be used to add custom fields to your GraphQL schema.
+
+The plugin hook looks like this:
+
+```python
+@hookimpl
+def graphql_extra_fields(datasette, database):
+    "A list of (name, field_type) tuples to include in the GraphQL schema"
+```
+
+You can use this hook to return a list of tuples describing additional fields that should be exposed in your schema. Each tuple should consiste of a string naming the new field, plus a [Graphene Field object](https://docs.graphene-python.org/en/latest/types/objecttypes/) that specifies the schema and provides a `resolver` function.
+
+This example implementation uses `pkg_resources` to return a list of currently installed Python packages:
+
+```python
+import graphene
+from datasette import hookimpl
+import pkg_resources
+
+@hookimpl
+def graphql_extra_fields():
+    class Package(graphene.ObjectType):
+        "An installed package"
+        name = graphene.String()
+        version = graphene.String()
+
+    return [
+        (
+            "packages",
+            graphene.Field(
+                graphene.List(Package),
+                description="List of installed packages",
+                resolver=lambda root, info: [
+                {"name": d.project_name, "version": d.version}
+                for d in sorted(
+                    pkg_resources.working_set, key=lambda d: d.project_name.lower()
+                )
+            ])
+        ),
+    ]
+```
+
+With this plugin installed, the following GraphQL query can be used to retrieve a list of installed packages:
+
+```graphql
+{
+  packages {
+    name
+    version
+  }
+}
+```
 
 ## Development
 

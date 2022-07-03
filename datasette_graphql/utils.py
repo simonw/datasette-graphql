@@ -1,5 +1,7 @@
 from base64 import b64decode, b64encode
 from collections import namedtuple
+from datasette.utils import await_me_maybe
+from datasette.plugins import pm
 from enum import Enum
 import graphene
 from graphene.types import generic
@@ -225,6 +227,13 @@ async def schema_for_database(datasette, database=None):
         # Empty schema throws a 500 error, so add something here
         to_add.append(("empty", graphene.String()))
         to_add.append(("resolve_empty", lambda a, b: "schema"))
+
+    for extra_fields in pm.hook.graphql_extra_fields(
+        datasette=datasette, database=db.name
+    ):
+        extra_tuples = await await_me_maybe(extra_fields)
+        if extra_tuples:
+            to_add.extend(extra_tuples)
 
     Query = type(
         "Query",
