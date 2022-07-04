@@ -410,7 +410,7 @@ def graphql_extra_fields(datasette, database):
     "A list of (name, field_type) tuples to include in the GraphQL schema"
 ```
 
-You can use this hook to return a list of tuples describing additional fields that should be exposed in your schema. Each tuple should consiste of a string naming the new field, plus a [Graphene Field object](https://docs.graphene-python.org/en/latest/types/objecttypes/) that specifies the schema and provides a `resolver` function.
+You can use this hook to return a list of tuples describing additional fields that should be exposed in your schema. Each tuple should consist of a string naming the new field, plus a [Graphene Field object](https://docs.graphene-python.org/en/latest/types/objecttypes/) that specifies the schema and provides a `resolver` function.
 
 This example implementation uses `pkg_resources` to return a list of currently installed Python packages:
 
