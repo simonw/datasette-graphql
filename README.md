@@ -419,6 +419,7 @@ import graphene
 from datasette import hookimpl
 import pkg_resources
 
+
 @hookimpl
 def graphql_extra_fields():
     class Package(graphene.ObjectType):
@@ -426,18 +427,20 @@ def graphql_extra_fields():
         name = graphene.String()
         version = graphene.String()
 
+    def resolve_packages(root, info):
+        return [
+            {"name": d.project_name, "version": d.version}
+            for d in pkg_resources.working_set
+        ]
+
     return [
         (
             "packages",
             graphene.Field(
                 graphene.List(Package),
                 description="List of installed packages",
-                resolver=lambda root, info: [
-                {"name": d.project_name, "version": d.version}
-                for d in sorted(
-                    pkg_resources.working_set, key=lambda d: d.project_name.lower()
-                )
-            ])
+                resolver=resolve_packages,
+            ),
         ),
     ]
 ```
