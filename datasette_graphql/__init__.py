@@ -212,7 +212,11 @@ def table_actions(datasette, actor, database, table):
     async def inner():
         graphql_path = datasette.urls.path("/graphql/{}".format(database))
         db_schema = await schema_for_database_via_cache(datasette, database=database)
-        example_query = await db_schema.table_classes[table].example_query()
+        try:
+            example_query = await db_schema.table_classes[table].example_query()
+        except KeyError:
+            # https://github.com/simonw/datasette-graphql/issues/90
+            return []
         return [
             {
                 "href": "{}?query={}".format(
