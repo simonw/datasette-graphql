@@ -737,6 +737,8 @@ class Namer:
             value = "_" + value
         if value in self.reserved:
             value += "_"
+        if value.startswith("__"):
+            value = "_0_" + value[2:]
         suffix = 2
         orig = value
         if value.startswith("_") and value.endswith("_"):

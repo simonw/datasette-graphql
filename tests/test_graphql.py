@@ -110,6 +110,8 @@ async def test_query_fields(ds):
         "view_on_repos",
         "bad_foreign_key",
         "bad_foreign_key_row",
+        "table_with_dangerous_columns",
+        "table_with_dangerous_columns_row",
     }
 
 
@@ -791,6 +793,31 @@ async def test_graphql_reserved_column_names(ds):
                 "nodes": [
                     {"id": 1, "if_": "keyword if", "description_": "a description"}
                 ]
+            }
+        }
+    }
+
+
+@pytest.mark.asyncio
+async def test_graphql_dangerous_column_names(ds):
+    response = await ds.client.post(
+        "/graphql",
+        json={
+            "query": """{
+                table_with_dangerous_columns {
+                    nodes {
+                        _0_Starts_With_Hash
+                        _0_double_underscore
+                    }
+                }
+            }"""
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": {
+            "table_with_dangerous_columns": {
+                "nodes": [{"_0_Starts_With_Hash": 2, "_0_double_underscore": 3}]
             }
         }
     }
