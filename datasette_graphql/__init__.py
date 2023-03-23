@@ -74,6 +74,7 @@ async def view_graphql(request, datasette):
                     "database": database,
                     "graphiql_css": [p.name for p in static.glob("*.css")],
                     "graphiql_js": js_filenames,
+                    "graphql_path": _graphql_path(datasette),
                 },
                 request=request,
             ),
@@ -157,17 +158,35 @@ async def check_permissions(request, datasette, database):
 
 @hookimpl
 def menu_links(datasette, actor):
+    graphql_path = _graphql_path(datasette)
     return [
-        {"href": datasette.urls.path("/graphql"), "label": "GraphQL API"},
+        {"href": datasette.urls.path(graphql_path), "label": "GraphQL API"},
     ]
 
 
+def _graphql_path(datasette):
+    config = datasette.plugin_config("datasette-graphql") or {}
+    graphql_path = None
+    if "path" not in config:
+        graphql_path = "/graphql"
+    else:
+        graphql_path = config["path"]
+    assert graphql_path.startswith("/") and not graphql_path.endswith(
+        "/"
+    ), '"path" must start with / and must not end with /'
+    return graphql_path
+
+
 @hookimpl
-def register_routes():
+def register_routes(datasette):
+    graphql_path = _graphql_path(datasette)
     return [
-        (r"^/graphql/(?P<database>[^/]+)\.graphql$", view_graphql_schema),
-        (r"^/graphql/(?P<database>[^/]+)$", view_graphql),
-        (r"^/graphql$", view_graphql),
+        (
+            r"^{}/(?P<database>[^/]+)\.graphql$".format(graphql_path),
+            view_graphql_schema,
+        ),
+        (r"^{}/(?P<database>[^/]+)$".format(graphql_path), view_graphql),
+        (r"^{}$".format(graphql_path), view_graphql),
     ]
 
 
@@ -210,7 +229,9 @@ def startup(datasette):
 @hookimpl
 def table_actions(datasette, actor, database, table):
     async def inner():
-        graphql_path = datasette.urls.path("/graphql/{}".format(database))
+        graphql_path = datasette.urls.path(
+            "{}/{}".format(_graphql_path(datasette), database)
+        )
         db_schema = await schema_for_database_via_cache(datasette, database=database)
         try:
             example_query = await db_schema.table_classes[table].example_query()
@@ -231,17 +252,18 @@ def table_actions(datasette, actor, database, table):
 
 @hookimpl
 def database_actions(datasette, actor, database):
+    graphql_path = _graphql_path(datasette)
     if len(datasette.databases) > 1:
         return [
             {
-                "href": datasette.urls.path("/graphql/{}".format(database)),
+                "href": datasette.urls.path("{}/{}".format(graphql_path, database)),
                 "label": "GraphQL API for {}".format(database),
             }
         ]
     else:
         return [
             {
-                "href": datasette.urls.path("/graphql"),
+                "href": datasette.urls.path(graphql_path),
                 "label": "GraphQL API",
             }
         ]

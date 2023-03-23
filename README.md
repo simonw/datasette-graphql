@@ -14,6 +14,7 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
 <!-- toc -->
 
 - [Installation](#installation)
+- [Configuration](#configuration)
 - [Usage](#usage)
   * [Querying for tables and columns](#querying-for-tables-and-columns)
   * [Fetching a single record](#fetching-a-single-record)
@@ -40,6 +41,20 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
 Install this plugin in the same environment as Datasette.
 
     $ datasette install datasette-graphql
+
+## Configuration
+
+By default this plugin adds the GraphQL API at `/graphql`. You can configure a different path using the `path` plugin setting, for example by adding this to `metadata.json`:
+```json
+{
+  "plugins": {
+    "datasette-graphql": {
+      "path": "/-/graphql"
+    }
+  }
+}
+```
+This will set the GraphQL API to live at `/-/graphql` instead.
 
 ## Usage
 

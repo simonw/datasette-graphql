@@ -208,7 +208,6 @@ async def test_graphql_auto_camelcase(db_path2, on, expected):
     _schema_cache.clear()
     ds = Datasette(
         [str(db_path2)],
-        pdb=True,
         metadata={"plugins": {"datasette-graphql": {"auto_camelcase": on}}},
     )
     query = """
@@ -725,7 +724,7 @@ async def test_no_error_on_empty_schema():
     ),
 )
 async def test_table_action(db_path, table, graphql_table, columns):
-    ds = Datasette([str(db_path)], pdb=True)
+    ds = Datasette([str(db_path)])
     db = ds.get_database("test")
     await db.execute_write(
         """
@@ -840,3 +839,36 @@ async def test_bad_foreign_keys(ds):
     )
     assert response.status_code == 200
     assert response.json() == {"data": {"bad_foreign_key": {"nodes": [{"fk": 1}]}}}
+
+
+@pytest.mark.asyncio
+async def test_alternative_graphql():
+    graphql_path = "/-/graphql"
+    ds = Datasette(
+        [],
+        memory=True,
+        metadata={
+            "plugins": {
+                "datasette-graphql": {
+                    "path": graphql_path,
+                }
+            }
+        },
+    )
+    # First check for menu
+    response = await ds.client.get("/")
+    if graphql_path is None:
+        assert "GraphQL API" not in response.text
+    else:
+        assert (
+            '<li><a href="{}">GraphQL API</a></li>'.format(graphql_path)
+            in response.text
+        )
+    # Now check for direct access
+    if graphql_path is None:
+        response = await ds.client.get("/graphql")
+        assert response.status_code == 404
+    else:
+        response = await ds.client.get(graphql_path, headers={"Accept": "text/html"})
+        assert response.status_code == 200
+        assert "GraphiQL" in response.text

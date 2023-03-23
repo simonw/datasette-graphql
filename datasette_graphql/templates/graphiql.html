@@ -61,7 +61,7 @@
         history.replaceState(null, null, newSearch);
       }
       function graphQLFetcher(graphQLParams) {
-        return fetch('/graphql{% if database %}/{{ database }}{% endif %}', {
+        return fetch('{{ graphql_path }}{% if database %}/{{ database }}{% endif %}', {
           method: 'post',
           headers: {
             'Accept': 'application/json',

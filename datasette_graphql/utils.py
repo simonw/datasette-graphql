@@ -141,7 +141,7 @@ async def schema_for_database(datasette, database=None):
     table_classes = {}
     table_collection_classes = {}
 
-    for (table, meta) in table_metadata.items():
+    for table, meta in table_metadata.items():
         table_name = meta.graphql_name
         if table in hidden_tables:
             continue
