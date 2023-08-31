@@ -9,11 +9,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.8
+        python-version: 3.11
     - uses: actions/cache@v2
       name: Configure pip caching
       with:
@@ -65,5 +65,4 @@ jobs:
           -m metadata.json \
           --install=https://github.com/simonw/datasette-graphql/archive/$GITHUB_SHA.zip \
           --install=datasette-schema-versions \
-          --service datasette-graphql-demo \
-          --branch main
+          --service datasette-graphql-demo
