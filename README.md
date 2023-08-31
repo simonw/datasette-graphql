@@ -34,7 +34,7 @@ Try out a live demo at [datasette-graphql-demo.datasette.io/graphql](https://dat
 
 <!-- tocstop -->
 
-![GraphiQL animated demo](https://static.simonwillison.net/static/2020/graphiql.gif)
+![Animated demo showing autocomplete while typing a GraphQL query into the GraphiQL interface](https://static.simonwillison.net/static/2020/graphiql.gif)
 
 ## Installation
 
