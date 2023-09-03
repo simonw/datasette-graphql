@@ -1,4 +1,8 @@
+from pathlib import Path
 import httpx
+
+
+DIR = Path(__file__).parent
 
 urls = (
     "https://unpkg.com/react/umd/react.production.min.js",
@@ -16,7 +20,7 @@ def fetch(url):
     # Insert version into filename
     bits = filename.split(".min.")
     version_filename = f".{version}.min.".join(bits)
-    open(version_filename, "w").write(content)
+    (DIR / version_filename).write_text(content)
     print(version_filename)
 
 
