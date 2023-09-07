@@ -18,6 +18,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: pip
         cache-dependency-path: setup.py
+    - name: Install dependencies
+      run: |
+        pip install -e '.[test]'
     - name: Run tests
       run: |
         pytest
