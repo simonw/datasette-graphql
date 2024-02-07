@@ -113,6 +113,7 @@ async def view_graphql(request, datasette):
         "num_queries_executed": 0,
         "num_queries_limit": config.get("num_queries_limit")
         or DEFAULT_NUM_QUERIES_LIMIT,
+        "request": request,  # For authentication headers
     }
 
     result = await schema.execute_async(

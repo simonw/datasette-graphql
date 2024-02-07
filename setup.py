@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 
-VERSION = "2.2"
+VERSION = "3.0a0"
 
 
 def get_long_description():
@@ -29,7 +29,7 @@ setup(
     packages=["datasette_graphql"],
     entry_points={"datasette": ["graphql = datasette_graphql"]},
     install_requires=[
-        "datasette>=0.58.1",
+        "datasette>=1.0a5",
         "graphene>=3.1.0,<4.0",
         "graphql-core>=3.2.1",
         "sqlite-utils",
