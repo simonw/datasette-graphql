@@ -594,7 +594,15 @@ def make_table_resolver(
                     path_with_query_string,
                 )
 
-        data = (await datasette.client.get(path_with_query_string)).json()
+        headers = context["request"].headers
+        cookies = context["request"].cookies
+
+        response = await datasette.client.get(
+            path_with_query_string, headers=headers, cookies=cookies
+        )
+        if response.status_code != 200:
+            raise Exception(str(response.status_code) + response.text)
+        data = response.json()
         # If any cells are $base64, decode them into bytes objects
         for row in data["rows"]:
             for key, value in row.items():
