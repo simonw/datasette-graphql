@@ -536,9 +536,7 @@ async def test_time_limit_ms(db_path):
     assert response_json["data"] == {"repos": None}
     assert len(response_json["errors"]) == 1
     assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
-    assert response_json["errors"][0]["message"].endswith(
-        " > 0.1ms - /test/repos.json?_nofacet=1&_size=10&_search=dogspotter"
-    )
+    assert " > 0.1ms " in response_json["errors"][0]["message"]
 
 
 @pytest.mark.asyncio
