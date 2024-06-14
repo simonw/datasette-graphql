@@ -60,26 +60,10 @@
         }).join('&');
         history.replaceState(null, null, newSearch);
       }
-      function graphQLFetcher(graphQLParams) {
-        return fetch('{{ graphql_path }}{% if database %}/{{ database }}{% endif %}', {
-          method: 'post',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'x-csrftoken': '{{ csrftoken() }}'
-          },
-          body: JSON.stringify(graphQLParams),
-          credentials: 'include',
-        }).then(function (response) {
-          return response.text();
-        }).then(function (responseBody) {
-          try {
-            return JSON.parse(responseBody);
-          } catch (error) {
-            return responseBody;
-          }
-        });
-      }
+      var graphQLFetcher = GraphiQL.createFetcher({
+        url: '{{ graphql_path }}{% if database %}/{{ database }}{% endif %}',
+        headers: { 'x-csrftoken': '{{ csrftoken() }}' }
+      })
       ReactDOM.render(
         React.createElement(GraphiQL, {
           fetcher: graphQLFetcher,
