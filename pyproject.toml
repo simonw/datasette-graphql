@@ -1,6 +1,6 @@
 [project]
 name = "datasette-graphql"
-version = "2.2"
+version = "3.0a1"
 description = "Datasette plugin providing an automatic GraphQL API for your SQLite databases"
 readme = "README.md"
 authors = [{name = "Simon Willison"}]
