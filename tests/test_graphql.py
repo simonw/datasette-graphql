@@ -84,8 +84,6 @@ async def test_query_fields(ds):
     assert fields == {
         "_1_images_row",
         "_1_images",
-        "t_table_",
-        "t_table__row",
         "issues_row",
         "issues",
         "licenses_row",
@@ -537,7 +535,7 @@ async def test_time_limit_ms(db_path):
     assert len(response_json["errors"]) == 1
     assert response_json["errors"][0]["message"].startswith("Time limit exceeded: ")
     assert response_json["errors"][0]["message"].endswith(
-        " > 0.1ms - /test/repos.json?_nofacet=1&_size=10&_search=dogspotter"
+        " > 0.1ms - /test/repos.json?_nofacet=1&_extra=columns%2Ccount&_size=10&_search=dogspotter"
     )
 
 
@@ -714,31 +712,12 @@ async def test_no_error_on_empty_schema():
         (
             "repos",
             "repos",
-            "id full_name name tags owner { id name } license { _key name }",
-        ),
-        (
-            "_csv_progress_",
-            "t_csv_progress_",
-            "id filename bytes_todo bytes_done rows_done started completed error",
+            "id full_name name tags owner { id name } license { _key _key }",
         ),
     ),
 )
 async def test_table_action(db_path, table, graphql_table, columns):
     ds = Datasette([str(db_path)])
-    db = ds.get_database("test")
-    await db.execute_write(
-        """
-        CREATE TABLE IF NOT EXISTS [_csv_progress_] (
-            [id] TEXT PRIMARY KEY,
-            [filename] TEXT,
-            [bytes_todo] INTEGER,
-            [bytes_done] INTEGER,
-            [rows_done] INTEGER,
-            [started] TEXT,
-            [completed] TEXT,
-            [error] TEXT
-        )"""
-    )
     response = await ds.client.get("/test/{}".format(table))
     html = response.text
     prefix = '<li><a href="/graphql/test?query='

@@ -1,0 +1,36 @@
+[project]
+name = "datasette-graphql"
+version = "2.2"
+description = "Datasette plugin providing an automatic GraphQL API for your SQLite databases"
+readme = "README.md"
+authors = [{name = "Simon Willison"}]
+license = "Apache-2.0"
+requires-python = ">=3.10"
+dependencies = [
+    "datasette>=1.0a20",
+    "graphene>=3.1.0,<4.0",
+    "graphql-core>=3.2.1",
+    "sqlite-utils",
+]
+
+[project.urls]
+Homepage = "https://github.com/simonw/datasette-graphql"
+Issues = "https://github.com/simonw/datasette-graphql/issues"
+CI = "https://github.com/simonw/datasette-graphql/actions"
+Changelog = "https://github.com/simonw/datasette-graphql/releases"
+
+[project.entry-points.datasette]
+graphql = "datasette_graphql"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.18,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""

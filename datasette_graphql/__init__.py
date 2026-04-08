@@ -2,6 +2,7 @@ from click import ClickException
 from datasette import hookimpl
 from datasette.utils.asgi import Response, NotFound, Forbidden
 from datasette.plugins import pm
+from datasette.resources import DatabaseResource
 from graphql import graphql, print_schema
 import json
 from .utils import schema_for_database_via_cache
@@ -133,27 +134,13 @@ async def view_graphql(request, datasette):
 
 
 async def check_permissions(request, datasette, database):
-    # First check database permission
-    ok = await datasette.permission_allowed(
-        request.actor,
-        "view-database",
-        resource=database,
-        default=None,
-    )
-    if ok is not None:
-        if ok:
-            return
-        else:
-            raise Forbidden("view-database")
-
-    # Fall back to checking instance permission
-    ok2 = await datasette.permission_allowed(
-        request.actor,
-        "view-instance",
-        default=None,
-    )
-    if ok2 is False:
-        raise Forbidden("view-instance")
+    # Check database permission - this already incorporates instance-level permissions
+    if not await datasette.allowed(
+        actor=request.actor,
+        action="view-database",
+        resource=DatabaseResource(database),
+    ):
+        raise Forbidden("view-database")
 
 
 @hookimpl
