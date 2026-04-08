@@ -279,10 +279,7 @@ def make_table_collection_class(table, table_class, meta):
         edges = graphene.List(_Edge)
 
         def resolve_totalCount(parent, info):
-            count = parent.get("count")
-            if count is None:
-                count = parent.get("filtered_table_rows_count")
-            return count
+            return parent["count"]
 
         def resolve_nodes(parent, info):
             return parent["rows"]
@@ -606,11 +603,6 @@ def make_table_resolver(
                 )
 
         data = (await datasette.client.get(path_with_query_string)).json()
-        # Rows are already returned as dicts in modern Datasette
-        if data["rows"] and isinstance(data["rows"][0], list):
-            # Old format: rows are arrays, need to zip with columns
-            data["rows"] = [dict(zip(data["columns"], row)) for row in data["rows"]]
-        # Otherwise rows are already dicts
         # If any cells are $base64, decode them into bytes objects
         for row in data["rows"]:
             for key, value in row.items():
