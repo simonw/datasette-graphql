@@ -93,9 +93,18 @@ async def schema_for_database(datasette, database=None):
     db = datasette.get_database(database)
     hidden_tables = await db.hidden_table_names()
 
+    # First get all table configs (async)
+    table_names = await db.table_names()
+    view_names = await db.view_names()
+    table_configs = {}
+    for table in table_names + view_names:
+        table_configs[table] = await datasette.table_config(
+            table=table, database=db.name
+        )
+
     # Perform all introspection in a single call to the execute_fn thread
     table_metadata = await db.execute_fn(
-        lambda conn: introspect_tables(conn, datasette, db.name)
+        lambda conn: introspect_tables(conn, datasette, db.name, table_configs)
     )
 
     # Construct the tableFilter classes
@@ -270,7 +279,10 @@ def make_table_collection_class(table, table_class, meta):
         edges = graphene.List(_Edge)
 
         def resolve_totalCount(parent, info):
-            return parent["filtered_table_rows_count"]
+            count = parent.get("count")
+            if count is None:
+                count = parent.get("filtered_table_rows_count")
+            return count
 
         def resolve_nodes(parent, info):
             return parent["rows"]
@@ -545,6 +557,7 @@ def make_table_resolver(
 
         qs = {
             "_nofacet": 1,
+            "_extra": "columns,count",
         }
         qs.update(pairs)
         if after:
@@ -593,7 +606,11 @@ def make_table_resolver(
                 )
 
         data = (await datasette.client.get(path_with_query_string)).json()
-        data["rows"] = [dict(zip(data["columns"], row)) for row in data["rows"]]
+        # Rows are already returned as dicts in modern Datasette
+        if data["rows"] and isinstance(data["rows"][0], list):
+            # Old format: rows are arrays, need to zip with columns
+            data["rows"] = [dict(zip(data["columns"], row)) for row in data["rows"]]
+        # Otherwise rows are already dicts
         # If any cells are $base64, decode them into bytes objects
         for row in data["rows"]:
             for key, value in row.items():
@@ -659,7 +676,7 @@ def path_from_row_pks(row, pks, use_rowid, quote=True):
     return ",".join(bits)
 
 
-def introspect_tables(conn, datasette, db_name):
+def introspect_tables(conn, datasette, db_name, table_configs):
     db = sqlite_utils.Database(conn)
 
     table_names = db.table_names()
@@ -669,13 +686,11 @@ def introspect_tables(conn, datasette, db_name):
     table_namer = Namer("t")
 
     for table in table_names + view_names:
-        datasette_table_metadata = datasette.table_metadata(
-            table=table, database=db_name
-        )
+        datasette_table_config = table_configs.get(table, {})
         columns = db[table].columns_dict
         foreign_keys = []
         pks = []
-        supports_fts = bool(datasette_table_metadata.get("fts_table"))
+        supports_fts = bool(datasette_table_config.get("fts_table"))
         fks_back = []
         if hasattr(db[table], "foreign_keys"):
             # Views don't have .foreign_keys

@@ -7,7 +7,7 @@ authors = [{name = "Simon Willison"}]
 license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = [
-    "datasette>=0.58.1",
+    "datasette>=1.0a20",
     "graphene>=3.1.0,<4.0",
     "graphql-core>=3.2.1",
     "sqlite-utils",

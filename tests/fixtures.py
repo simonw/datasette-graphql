@@ -141,7 +141,9 @@ def db_path2(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def ds(db_path):
-    return Datasette([str(db_path)], pdb=True)
+    datasette = Datasette([str(db_path)], pdb=True)
+    datasette.root_enabled = True
+    return datasette
 
 
 if __name__ == "__main__":
