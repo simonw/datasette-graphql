@@ -4,7 +4,7 @@ import re
 import urllib
 from .test_graphql import graphql_re, variables_re
 
-link_re = re.compile(r"\[Try this query]\((.*?)\)")
+link_re = re.compile(r"<!-- \[Try this query]\((.*?)\) -->")
 
 
 @pytest.mark.parametrize(
@@ -40,10 +40,10 @@ def test_examples_link_to_live_demo(request, path):
                 urllib.parse.urlencode(args, quote_via=urllib.parse.quote),
             )
         )
-        fixed_fragment = "```graphql\n{}\n```\n[Try this query]({})\n".format(
+        fixed_fragment = "```graphql\n{}\n```\n<!-- [Try this query]({}) -->\n".format(
             query.strip(), expected_url
         )
-        # Check for the `[Try this query ...]` that follows this one character later
+        # Check for the `<!-- [Try this query ...] -->` that follows this one character later
         try_this_match = link_re.search(content, start)
         if try_this_match is None or try_this_match.start() - end != 1:
             if should_rewrite:
@@ -54,7 +54,7 @@ def test_examples_link_to_live_demo(request, path):
             else:
                 assert (
                     False
-                ), "{}: [Try this query] link should follow {}\n\nFix with pytest --rewrite-examples'".format(
+                ), "{}: <!-- [Try this query] --> comment should follow {}\n\nFix with pytest --rewrite-examples'".format(
                     path, query
                 )
         else:
@@ -62,7 +62,7 @@ def test_examples_link_to_live_demo(request, path):
             if expected_url != try_this_match.group(1):
                 if should_rewrite:
                     query_link_fix_re = re.compile(
-                        r"```graphql\n{}\n```\n\[Try this query]\((.*?)\)".format(
+                        r"```graphql\n{}\n```\n<!-- \[Try this query]\((.*?)\) -->".format(
                             re.escape(query.strip())
                         )
                     )
